@@ -10,7 +10,6 @@ flatpak documents --columns=all
 
 echo ""
 echo ">>> ~/.var/app 目录内容"
-# 使用 || true 防止如果目录不存在导致 set -e 报错退出
 ls -la ~/.var/app || echo "目录不存在"
 echo "================================="
 echo ""
@@ -20,10 +19,14 @@ echo ""
 # 2. 执行清理操作
 # ==========================================
 echo "正在执行清理操作..."
-flatpak ps --columns=instance | xargs -rn1 flatpak kill
-LC_ALL=C flatpak documents --columns=id | grep -v ' ' | xargs -rn1 flatpak document-unexport --doc-id
-flatpak ps --columns=instance | xargs -rn1 flatpak kill
+
+# 加上 || true 防止 grep 没找到内容或 kill 失败导致脚本中断
+flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
+LC_ALL=C flatpak documents --columns=id | grep -v ' ' | xargs -rn1 flatpak document-unexport --doc-id || true
+flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
+
 rm -rf ~/.var/app/org.gnome.Loupe ~/.var/app/com.vscodium.codium
+
 echo "清理完成！"
 echo ""
 
