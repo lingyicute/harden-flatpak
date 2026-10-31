@@ -25,7 +25,7 @@ flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
 LC_ALL=C flatpak documents --columns=id | grep -v ' ' | xargs -rn1 flatpak document-unexport --doc-id || true
 flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
 
-rm -rf ~/.var/app/org.gnome.Loupe ~/.var/app/com.vscodium.codium
+rm -rf ~/.var/app/org.gnome.Loupe ~/.var/app/com.vscodium.codium ~/.var/app/io.frama.editide.editide
 
 echo "清理完成！"
 echo ""
