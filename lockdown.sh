@@ -9,11 +9,14 @@ kSocketPermissions=("wayland" "inherit-wayland-socket" "gpg-agent" "cups" "pcsc"
 kDevicePermissions=("all" "shm" "kvm" "input" "usb" "dri")
 kFeaturePermissions=("per-app-dev-shm" "canbus" "bluetooth" "multiarch" "devel")
 kFilesystemPermissions=("host:reset" "home" "host-etc" "host" "host-os")
-kDangerousFilesystemPermissions=("~/.bashrc" "~/.bash_profile" "/home" "/var/home" "/var" "/media" "/run/media" "/run" "/mnt" "xdg-config/kdeglobals" "xdg-run/gnupg" "xdg-download" "xdg-run/gvfs" "xdg-run/gvfsd")
+kDangerousFilesystemPermissions=("xdg-data/flatpak/overrides" "~/.bashrc" "~/.bash_profile" "~/.bash_login" "~/.profile" "~/.zshrc" "~/.zprofile" "~/.zshenv" "~/.config/autostart" "~/.config/systemd" "~/.config/environment.d" "~/.ssh" "~/.gnupg" "/home" "/var/home" "/var" "/media" "/run/media" "/run" "/mnt" "xdg-config/kdeglobals" "xdg-run/gnupg" "xdg-download" "xdg-run/gvfs" "xdg-run/gvfsd")
 kKnownSessionBusNames=("org.xfce.ScreenSaver" "org.mate.ScreenSaver" "org.cinnamon.ScreenSaver" "org.gnome.ScreenSaver" "org.kde.kwalletd6" "org.gnome.Mutter.IdleMonitor.*" "org.gnome.ControlCenter" "org.gnome.Settings" "org.gnome.SettingsDaemon.MediaKeys" "org.gnome.SessionManager" "org.gnome.Shell.Screenshot" "org.kde.kiod5" "org.kde.kwin.Screenshot" "org.kde.JobViewServer" "org.gtk.vfs.*" "org.freedesktop.secrets" "org.kde.kconfig.notify" "org.kde.kpasswdserver" "org.kde.*" "org.kde.StatusNotifierWatcher" "org.kde.kded6" "org.kde.kpasswdserver6" "org.kde.kiod6" "com.canonical.Unity" "org.freedesktop.Notifications" "org.freedesktop.FileManager1" "org.freedesktop.impl.portal.PermissionStore" "org.freedesktop.Flatpak" "com.canonical.AppMenu.Registrar" "org.kde.KGlobalSettings" "org.kde.kded5" "com.canonical.Unity.LauncherEntry" "org.kde.kwalletd5" "org.gnome.SettingsDaemon" "org.a11y.Bus" "com.canonical.indicator.application" "org.freedesktop.ScreenSaver" "ca.desrt.dconf" "org.freedesktop.PowerManagement" "org.gnome.Software" "org.freedesktop.Tracker3.Writeback" "io.missioncenter.MissionCenter.Gatherer")
 kKnownSystemBusNames=("org.bluez" "org.freedesktop.home1" "org.freedesktop.hostname1" "org.freedesktop.import1" "org.freedesktop.locale1" "org.freedesktop.LogControl1" "org.freedesktop.machine1" "org.freedesktop.network1" "org.freedesktop.oom1" "org.freedesktop.portable1" "org.freedesktop.resolve1" "org.freedesktop.sysupdate1" "org.freedesktop.timesync1" "org.freedesktop.timedate1" "org.freedesktop.systemd1" "org.freedesktop.Avahi" "org.freedesktop.Avahi.*" "org.freedesktop.login1" "org.freedesktop.NetworkManager" "org.freedesktop.UPower" "org.freedesktop.UDisks2" "org.freedesktop.fwupd")
+kSubsystemPolicies=("Tracker3.dbus:org.freedesktop.Tracker3.Miner.Files=tracker:Audio" "Tracker3.dbus:org.freedesktop.Tracker3.Miner.Files=tracker:Pictures" "Tracker3.dbus:org.freedesktop.Tracker3.Miner.Files=tracker:Software")
+kFlatsealSocketAccess=("wayland")
+kFlatsealFilesystemAccess=("/var/lib/flatpak/app:ro" "xdg-data/flatpak/app:ro" "xdg-data/flatpak/overrides:create")
 kFlatsealNameAccess=("org.freedesktop.impl.portal.PermissionStore")
-echo "This will configure flatpak to automatically reject most permissions (with the exception of the Wayland socket and the Dri device, since these are commonly used and ensure at the very least most apps will work without crashing)."
+echo "This will configure flatpak to automatically reject most permissions, including the Wayland socket and the Dri device."
 echo "This will also grant Flatseal access to certain permissions to allow them to operate and make reconfiguring much easier."
 echo "NOTE: This will break just about all Flatpaks by default, it is ON YOU to configure them to work with this configuration."
 echo ""
@@ -39,6 +42,16 @@ echo ""
     for i in "${kFeaturePermissions[@]}"; do
         echo "	Rejecting ${i}..."
         ${kCommand} --disallow="${i}"
+    done
+
+    echo "-- USB Portal Permissions --"
+    echo "	Rejecting all..."
+    ${kCommand} --nousb=all
+
+    echo "-- Subsystem Policies --"
+    for i in "${kSubsystemPolicies[@]}"; do
+        echo "	Rejecting ${i}..."
+        ${kCommand} --remove-policy="${i}"
     done
 
     echo "-- Filesystem Permissions --"
@@ -67,7 +80,29 @@ echo ""
         ${kCommand} --system-no-talk-name="${i}"
     done
 
-    echo "-- Granting Flatseal Access to Bus Names --"
+    echo "-- Bus Names Requested By Installed Apps --"
+    echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
+    echo "This also rejects every name the apps installed right now ask for. Re-run this script after installing apps."
+    flatpak list --app --columns=application | while IFS= read -r app; do
+        flatpak info --show-permissions "${app}"
+    done | awk -F= '
+        /^\[/ { sec = $0; next }
+        NF == 2 && $2 != "none" && sec == "[Session Bus Policy]" { print "--no-talk-name=" $1 }
+        NF == 2 && $2 != "none" && sec == "[System Bus Policy]"  { print "--system-no-talk-name=" $1 }
+    ' | sort -u | while IFS= read -r flag; do
+        echo "	Rejecting ${flag#*=}..."
+        ${kCommand} "${flag}" < /dev/null
+    done
+
+    echo "-- Granting Flatseal Access --"
+    for i in "${kFlatsealSocketAccess[@]}"; do
+        echo "	Granting socket ${i}..."
+        ${kCommand} --socket="${i}" com.github.tchx84.Flatseal
+    done
+    for i in "${kFlatsealFilesystemAccess[@]}"; do
+        echo "	Granting filesystem ${i}..."
+        ${kCommand} --filesystem="${i}" com.github.tchx84.Flatseal
+    done
     for i in "${kFlatsealNameAccess[@]}"; do
         echo "	Granting ${i}..."
         ${kCommand} --talk-name="${i}" com.github.tchx84.Flatseal
