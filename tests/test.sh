@@ -10,7 +10,9 @@ touch "$HOME/.var/app/org.a.App/data/x" "$XDG_RUNTIME_DIR/app/org.a.App/y"
 cat > "$tmp/bin/flatpak" <<'EOS'
 #!/bin/bash
 echo "$*" >> "$LOG"
+[[ -n "${FAKE_FAIL_ON:-}" && " $* " == *" $FAKE_FAIL_ON "* ]] && exit 1
 case "$1" in
+--version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
 list) echo org.a.App ;;
 info) printf '[Session Bus Policy]\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;\n' ;;
 esac
@@ -26,6 +28,9 @@ deny() { ! grep -qxF -- "$1" "$LOG" || { echo "FAIL: unexpected: $1"; fail=1; };
 want 'override --user --nosocket=wayland'
 want 'override --user --nodevice=dri'
 want 'override --user --nofilesystem=host:reset'
+want 'override --user --nofilesystem=host-root'
+want 'override --user --no-talk-name=org.freedesktop.UPower'
+want 'override --user --system-no-talk-name=org.bluez.obex'
 want 'override --user --nofilesystem=~/.netrc'
 want 'override --user --no-talk-name=org.freedesktop.impl.portal.desktop.gnome'
 want 'override --user --no-talk-name=org.x.Y'
@@ -39,6 +44,19 @@ want 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore co
 deny 'override --user --socket=wayland'
 deny 'override --user --persist=.'
 deny 'override --user --talk-name=org.gnome.Software com.github.tchx84.Flatseal'
+
+# flatpak 1.16 rejects host-root: must not be sent
+: > "$LOG"; FAKE_FLATPAK_VERSION=1.16.0 bash "$root/lockdown.sh" > /dev/null
+deny 'override --user --nofilesystem=host-root'
+want 'override --user --nofilesystem=host:reset'
+
+# flatpak too old: abort and change nothing
+: > "$LOG"; ! FAKE_FLATPAK_VERSION=1.14.0 bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: old flatpak accepted"; fail=1; }
+! grep -q '^override' "$LOG" || { echo "FAIL: old flatpak: override was called"; fail=1; }
+
+# a failing deny must abort before any grant (set -e, no partial re-grant)
+: > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
+deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
 
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
 [ -z "$(ls -A "$HOME/.var/app")" ] || { echo "FAIL: ~/.var/app not empty"; fail=1; }
