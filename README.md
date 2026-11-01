@@ -1,7 +1,44 @@
 # harden-flatpak
-A script to harden the flatpak permissions.
 
-This script configures Flatpak to automatically reject most permissions, which may break functionality for many Flatpaks. It provides options to proceed with the configuration and grants specific permissions as needed.
+Two scripts to harden the flatpak.
+
+lockdown script configures Flatpak to automatically reject most permissions, which may break functionality for many Flatpaks. It provides options to proceed with the configuration and grants specific permissions as needed.
+
+```console
+$ bash lockdown.sh   # default-deny user-level overrides; re-run after installing apps
+$ bash cleanup.sh    # kill Flatpaks, unexport documents, wipe ~/.var/app/* and $XDG_RUNTIME_DIR/app/*
+```
+
+Both scripts are deliberately tiny so that they can be audited at a glance. 
+
+> [!important]
+> 
+> Scripts never ask for confirmation: running the script is the confirmation. `cleanup.sh` deletes data immediately.
+
+## What `lockdown.sh` does
+
+- Denies every Flatpak permission type (`--unshare`, `--nosocket`, `--nodevice`, `--disallow`, `--nousb=all`, `--remove-policy`), including `wayland` and `dri`, for all apps. Nothing is persisted (`--persist` is never granted).
+- Denies all filesystem access (`host:reset`, `home`, `host`, `host-os`, `host-etc`) plus a list of sandbox-escape and credential paths (shell init files, `~/.config/systemd`, `~/.local/share/dbus-1/services`, `~/.ssh`, `~/.gnupg`, `~/.netrc`, `~/.password-store`, `xdg-data/flatpak/overrides`, mounted media, ...), so they stay masked even if you later grant `--filesystem=home` to one app.
+- Denies a static list of D-Bus names, including the concrete portal backends (`org.freedesktop.impl.portal.desktop.*`, `...Secret`, `...PermissionStore`) and the Flatpak/systemd escape names.
+- Reads the permissions of the apps installed right now (`flatpak info --show-permissions`) and denies every session/system bus name and subsystem policy they declare.
+- Re-grants only what Flatseal needs to work (see [docs/flatseal-grants.md](docs/flatseal-grants.md)).
+
+`--no-talk-name=foo.*` is **not** a glob in Flatpak. It only cancels an entry that is literally named `foo.*`. So the static list can never be complete; re-run `lockdown.sh` after installing apps.
+
+To undo: `flatpak override --user --reset` (and `flatpak override --user --reset com.github.tchx84.Flatseal`). To inspect: `flatpak override --user --show`.
+
+## Limits of Flatpak under a high-threat model
+
+- **A filtered session bus and the AT-SPI bus are still mounted.** `--nosocket=session-bus` only removes the unfiltered bus. `flatpak run` still mounts a filtered proxy that always allows `org.freedesktop.portal.*` (including sub-sandbox `Spawn()`) and an accessibility bus proxy. For complete bus isolation, run the app with `flatpak run --sandbox`.
+- **`~/.var/app/$APP_ID` is always writable and survives between runs.** Flatpak has no `--nopersist` override, and `persistent=` directories declared in a manifest cannot be revoked. That is what `cleanup.sh` is for; `flatpak run --sandbox` gives a throwaway sandbox.
+- **Do not grant `--filesystem=home` or `host` to untrusted apps.** Flatpak cannot mask a host path that does not exist yet. If `~/.bash_profile` is missing, an app with `home` can create it despite the mask. Grant narrow directories or use portals.
+- **Per-app overrides win over the global one.** Anything you granted to a single app earlier (for example with Flatseal) still applies after `lockdown.sh`. Check with `ls ~/.local/share/flatpak/overrides`.
+- **Portal decisions are not cleaned.** Camera, location, notification, etc. decisions live in `$XDG_DATA_HOME/flatpak/db/`. `cleanup.sh` shows them but does not delete them. Use `flatpak permissions`, `flatpak permission-remove` or `flatpak permission-reset APP_ID`.
+- **Wayland isolation needs `wp-security-context-v1`** in your compositor.
+
+## Tests
+
+`bash tests/test.sh` runs both scripts against a fake `flatpak` and checks the generated commands. It touches nothing real.
 
 ## 🗂️ License
 
