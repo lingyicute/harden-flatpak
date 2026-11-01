@@ -9,9 +9,9 @@ kSocketPermissions=("wayland" "inherit-wayland-socket" "gpg-agent" "cups" "pcsc"
 kDevicePermissions=("all" "shm" "kvm" "input" "usb" "dri")
 kFeaturePermissions=("per-app-dev-shm" "canbus" "bluetooth" "multiarch" "devel")
 kFilesystemPermissions=("host:reset" "home" "host-etc" "host" "host-os")
-kDangerousFilesystemPermissions=("xdg-data/flatpak/overrides" "~/.bashrc" "~/.bash_profile" "~/.bash_login" "~/.profile" "~/.zshrc" "~/.zprofile" "~/.zshenv" "~/.config/autostart" "~/.config/systemd" "~/.config/environment.d" "~/.ssh" "~/.gnupg" "/home" "/var/home" "/var" "/media" "/run/media" "/run" "/mnt" "xdg-config/kdeglobals" "xdg-run/gnupg" "xdg-download" "xdg-run/gvfs" "xdg-run/gvfsd")
-kKnownSessionBusNames=("org.xfce.ScreenSaver" "org.mate.ScreenSaver" "org.cinnamon.ScreenSaver" "org.gnome.ScreenSaver" "org.kde.kwalletd6" "org.gnome.Mutter.IdleMonitor.*" "org.gnome.ControlCenter" "org.gnome.Settings" "org.gnome.SettingsDaemon.MediaKeys" "org.gnome.SessionManager" "org.gnome.Shell.Screenshot" "org.kde.kiod5" "org.kde.kwin.Screenshot" "org.kde.JobViewServer" "org.gtk.vfs.*" "org.freedesktop.secrets" "org.kde.kconfig.notify" "org.kde.kpasswdserver" "org.kde.*" "org.kde.StatusNotifierWatcher" "org.kde.kded6" "org.kde.kpasswdserver6" "org.kde.kiod6" "com.canonical.Unity" "org.freedesktop.Notifications" "org.freedesktop.FileManager1" "org.freedesktop.impl.portal.PermissionStore" "org.freedesktop.Flatpak" "com.canonical.AppMenu.Registrar" "org.kde.KGlobalSettings" "org.kde.kded5" "com.canonical.Unity.LauncherEntry" "org.kde.kwalletd5" "org.gnome.SettingsDaemon" "org.a11y.Bus" "com.canonical.indicator.application" "org.freedesktop.ScreenSaver" "ca.desrt.dconf" "org.freedesktop.PowerManagement" "org.gnome.Software" "org.freedesktop.Tracker3.Writeback" "io.missioncenter.MissionCenter.Gatherer")
-kKnownSystemBusNames=("org.bluez" "org.freedesktop.home1" "org.freedesktop.hostname1" "org.freedesktop.import1" "org.freedesktop.locale1" "org.freedesktop.LogControl1" "org.freedesktop.machine1" "org.freedesktop.network1" "org.freedesktop.oom1" "org.freedesktop.portable1" "org.freedesktop.resolve1" "org.freedesktop.sysupdate1" "org.freedesktop.timesync1" "org.freedesktop.timedate1" "org.freedesktop.systemd1" "org.freedesktop.Avahi" "org.freedesktop.Avahi.*" "org.freedesktop.login1" "org.freedesktop.NetworkManager" "org.freedesktop.UPower" "org.freedesktop.UDisks2" "org.freedesktop.fwupd")
+kDangerousFilesystemPermissions=("xdg-data/flatpak/overrides" "~/.bashrc" "~/.bash_profile" "~/.bash_login" "~/.profile" "~/.zshrc" "~/.zprofile" "~/.zshenv" "~/.zlogin" "~/.zlogout" "~/.bash_logout" "~/.config/fish" "~/.config/autostart" "~/.config/systemd" "~/.config/environment.d" "~/.local/share/dbus-1/services" "~/.local/share/systemd" "~/.local/bin" "~/.ssh" "~/.gnupg" "~/.netrc" "~/.password-store" "/home" "/var/home" "/var" "/media" "/run/media" "/run" "/mnt" "xdg-config/kdeglobals" "xdg-run/gnupg" "xdg-download" "xdg-run/gvfs" "xdg-run/gvfsd")
+kKnownSessionBusNames=("org.xfce.ScreenSaver" "org.mate.ScreenSaver" "org.cinnamon.ScreenSaver" "org.gnome.ScreenSaver" "org.kde.kwalletd6" "org.gnome.Mutter.IdleMonitor.*" "org.gnome.ControlCenter" "org.gnome.Settings" "org.gnome.SettingsDaemon.MediaKeys" "org.gnome.SessionManager" "org.gnome.Shell.Screenshot" "org.kde.kiod5" "org.kde.kwin.Screenshot" "org.kde.JobViewServer" "org.gtk.vfs.*" "org.freedesktop.secrets" "org.kde.kconfig.notify" "org.kde.kpasswdserver" "org.kde.*" "org.kde.StatusNotifierWatcher" "org.kde.kded6" "org.kde.kpasswdserver6" "org.kde.kiod6" "com.canonical.Unity" "org.freedesktop.Notifications" "org.freedesktop.FileManager1" "org.freedesktop.impl.portal.PermissionStore" "org.freedesktop.impl.portal.*" "org.freedesktop.impl.portal.Secret" "org.freedesktop.impl.portal.desktop.gnome" "org.freedesktop.impl.portal.desktop.gtk" "org.freedesktop.impl.portal.desktop.kde" "org.freedesktop.impl.portal.desktop.wlr" "org.freedesktop.impl.portal.desktop.hyprland" "org.freedesktop.impl.portal.desktop.cosmic" "org.freedesktop.impl.portal.desktop.lxqt" "org.freedesktop.impl.portal.desktop.xapp" "org.freedesktop.impl.portal.desktop.pantheon" "org.freedesktop.systemd1" "org.freedesktop.systemd1.*" "org.freedesktop.Flatpak.*" "org.freedesktop.Flatpak.Development" "org.freedesktop.Flatpak" "com.canonical.AppMenu.Registrar" "org.kde.KGlobalSettings" "org.kde.kded5" "com.canonical.Unity.LauncherEntry" "org.kde.kwalletd5" "org.gnome.SettingsDaemon" "org.a11y.Bus" "com.canonical.indicator.application" "org.freedesktop.ScreenSaver" "ca.desrt.dconf" "org.freedesktop.PowerManagement" "org.gnome.Software" "org.freedesktop.Tracker3.Writeback" "io.missioncenter.MissionCenter.Gatherer")
+kKnownSystemBusNames=("org.bluez" "org.freedesktop.home1" "org.freedesktop.hostname1" "org.freedesktop.import1" "org.freedesktop.locale1" "org.freedesktop.LogControl1" "org.freedesktop.machine1" "org.freedesktop.network1" "org.freedesktop.oom1" "org.freedesktop.portable1" "org.freedesktop.resolve1" "org.freedesktop.sysupdate1" "org.freedesktop.timesync1" "org.freedesktop.timedate1" "org.freedesktop.systemd1" "org.freedesktop.Avahi" "org.freedesktop.Avahi.*" "org.freedesktop.login1" "org.freedesktop.NetworkManager" "org.freedesktop.UPower" "org.freedesktop.UDisks2" "org.freedesktop.fwupd" "org.freedesktop.Flatpak" "org.freedesktop.Flatpak.*" "org.freedesktop.Flatpak.SystemHelper" "org.freedesktop.systemd1.*")
 kSubsystemPolicies=("Tracker3.dbus:org.freedesktop.Tracker3.Miner.Files=tracker:Audio" "Tracker3.dbus:org.freedesktop.Tracker3.Miner.Files=tracker:Pictures" "Tracker3.dbus:org.freedesktop.Tracker3.Miner.Files=tracker:Software")
 kFlatsealSocketAccess=("wayland")
 kFlatsealFilesystemAccess=("/var/lib/flatpak/app:ro" "xdg-data/flatpak/app:ro" "xdg-data/flatpak/overrides:create")
@@ -80,15 +80,20 @@ echo ""
         ${kCommand} --system-no-talk-name="${i}"
     done
 
-    echo "-- Bus Names Requested By Installed Apps --"
+    echo "-- Bus Names And Policies Requested By Installed Apps --"
     echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
-    echo "This also rejects every name the apps installed right now ask for. Re-run this script after installing apps."
+    echo "This also rejects every bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
     flatpak list --app --columns=application | while IFS= read -r app; do
         flatpak info --show-permissions "${app}"
     done | awk -F= '
         /^\[/ { sec = $0; next }
         NF == 2 && $2 != "none" && sec == "[Session Bus Policy]" { print "--no-talk-name=" $1 }
         NF == 2 && $2 != "none" && sec == "[System Bus Policy]"  { print "--system-no-talk-name=" $1 }
+        NF == 2 && sec ~ /^\[Policy .+\]$/ {
+            n = split($2, v, ";")
+            for (i = 1; i <= n; i++)
+                if (v[i] != "" && v[i] !~ /^!/) print "--remove-policy=" substr(sec, 9, length(sec) - 9) "." $1 "=" v[i]
+        }
     ' | sort -u | while IFS= read -r flag; do
         echo "	Rejecting ${flag#*=}..."
         ${kCommand} "${flag}" < /dev/null
