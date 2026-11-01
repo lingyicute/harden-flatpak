@@ -34,13 +34,12 @@ echo "正在执行清理操作..."
 stop_instances() {
     flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
     for _ in $(seq 30); do
-        [ -z "$(flatpak ps --columns=instance)" ] && break
+        instances=$(LC_ALL=C flatpak ps --columns=instance)
+        [ -z "$instances" ] && return 0
         sleep 0.1
     done
-    if [ -n "$(flatpak ps --columns=instance)" ]; then
-        echo "错误：仍有 Flatpak 实例在运行，未删除任何数据" >&2
-        exit 1
-    fi
+    echo "错误：仍有 Flatpak 实例在运行，未删除任何数据" >&2
+    exit 1
 }
 
 # 加上 || true 防止 grep 没找到内容导致脚本中断
