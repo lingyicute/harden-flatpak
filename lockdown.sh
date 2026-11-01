@@ -5,15 +5,14 @@ set -euo pipefail
 
 kCommand="flatpak override --user"
 kSharePermissions=("network" "ipc")
-kSocketPermissions=("inherit-wayland-socket" "gpg-agent" "cups" "pcsc" "ssh-auth" "system-bus" "session-bus" "pulseaudio" "x11" "fallback-x11")
-kDevicePermissions=("all" "shm" "kvm" "input" "usb")
+kSocketPermissions=("wayland" "inherit-wayland-socket" "gpg-agent" "cups" "pcsc" "ssh-auth" "system-bus" "session-bus" "pulseaudio" "x11" "fallback-x11")
+kDevicePermissions=("all" "shm" "kvm" "input" "usb" "dri")
 kFeaturePermissions=("per-app-dev-shm" "canbus" "bluetooth" "multiarch" "devel")
-kFilesystemPermissions=("home" "host-etc" "host")
+kFilesystemPermissions=("host:reset" "home" "host-etc" "host" "host-os")
 kDangerousFilesystemPermissions=("~/.bashrc" "~/.bash_profile" "/home" "/var/home" "/var" "/media" "/run/media" "/run" "/mnt" "xdg-config/kdeglobals" "xdg-run/gnupg" "xdg-download" "xdg-run/gvfs" "xdg-run/gvfsd")
 kKnownSessionBusNames=("org.xfce.ScreenSaver" "org.mate.ScreenSaver" "org.cinnamon.ScreenSaver" "org.gnome.ScreenSaver" "org.kde.kwalletd6" "org.gnome.Mutter.IdleMonitor.*" "org.gnome.ControlCenter" "org.gnome.Settings" "org.gnome.SettingsDaemon.MediaKeys" "org.gnome.SessionManager" "org.gnome.Shell.Screenshot" "org.kde.kiod5" "org.kde.kwin.Screenshot" "org.kde.JobViewServer" "org.gtk.vfs.*" "org.freedesktop.secrets" "org.kde.kconfig.notify" "org.kde.kpasswdserver" "org.kde.*" "org.kde.StatusNotifierWatcher" "org.kde.kded6" "org.kde.kpasswdserver6" "org.kde.kiod6" "com.canonical.Unity" "org.freedesktop.Notifications" "org.freedesktop.FileManager1" "org.freedesktop.impl.portal.PermissionStore" "org.freedesktop.Flatpak" "com.canonical.AppMenu.Registrar" "org.kde.KGlobalSettings" "org.kde.kded5" "com.canonical.Unity.LauncherEntry" "org.kde.kwalletd5" "org.gnome.SettingsDaemon" "org.a11y.Bus" "com.canonical.indicator.application" "org.freedesktop.ScreenSaver" "ca.desrt.dconf" "org.freedesktop.PowerManagement" "org.gnome.Software" "org.freedesktop.Tracker3.Writeback" "io.missioncenter.MissionCenter.Gatherer")
 kKnownSystemBusNames=("org.bluez" "org.freedesktop.home1" "org.freedesktop.hostname1" "org.freedesktop.import1" "org.freedesktop.locale1" "org.freedesktop.LogControl1" "org.freedesktop.machine1" "org.freedesktop.network1" "org.freedesktop.oom1" "org.freedesktop.portable1" "org.freedesktop.resolve1" "org.freedesktop.sysupdate1" "org.freedesktop.timesync1" "org.freedesktop.timedate1" "org.freedesktop.systemd1" "org.freedesktop.Avahi" "org.freedesktop.Avahi.*" "org.freedesktop.login1" "org.freedesktop.NetworkManager" "org.freedesktop.UPower" "org.freedesktop.UDisks2" "org.freedesktop.fwupd")
-kFlatsealNameAccess=("org.gnome.Software" "org.freedesktop.impl.portal.PermissionStore")
-confirmation=""
+kFlatsealNameAccess=("org.freedesktop.impl.portal.PermissionStore")
 echo "This will configure flatpak to automatically reject most permissions (with the exception of the Wayland socket and the Dri device, since these are commonly used and ensure at the very least most apps will work without crashing)."
 echo "This will also grant Flatseal access to certain permissions to allow them to operate and make reconfiguring much easier."
 echo "NOTE: This will break just about all Flatpaks by default, it is ON YOU to configure them to work with this configuration."
@@ -67,14 +66,6 @@ echo ""
         echo "	Rejecting ${i}..."
         ${kCommand} --system-no-talk-name="${i}"
     done
-    echo "Note: This is to unbreak many Flatpaks by allowing the app to store persistent data in their own, isolated home directory without accessing the user's"
-    echo "-- Persistent Filesystem Grant --"
-    ${kCommand} --persist=.
-
-    echo "-- Granting Access to Common Permissions --"
-    echo "Note: This will grant all apps access to some permissions to ensure most apps work by default, this also encourages the use of these permissions instead of their alternatives"
-    echo "	Granting access to Wayland and hardware acceleration..."
-    ${kCommand} --socket=wayland --device=dri
 
     echo "-- Granting Flatseal Access to Bus Names --"
     for i in "${kFlatsealNameAccess[@]}"; do
