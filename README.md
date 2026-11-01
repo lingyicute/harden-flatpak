@@ -29,7 +29,7 @@ To undo: `flatpak override --user --reset` (and `flatpak override --user --reset
 
 ## Limits of Flatpak under a high-threat model
 
-- **A filtered session bus and the AT-SPI bus are still mounted.** `--nosocket=session-bus` only removes the unfiltered bus. `flatpak run` still mounts a filtered proxy that always allows `org.freedesktop.portal.*` (including sub-sandbox `Spawn()`) and an accessibility bus proxy. For complete bus isolation, run the app with `flatpak run --sandbox`.
+- **A filtered session bus and the AT-SPI bus are still mounted.** `--nosocket=session-bus` only removes the unfiltered bus. `flatpak run` still mounts a filtered proxy that always allows `org.freedesktop.portal.*` (including sub-sandbox `Spawn()`) and an accessibility bus proxy. For complete bus isolation, run the app with `flatpak run --sandbox`, or with `flatpak run --no-session-bus --no-a11y-bus` if you only want the buses gone and not the rest of the sandbox mode.
 - **`~/.var/app/$APP_ID` is always writable and survives between runs.** Flatpak has no `--nopersist` override, and `persistent=` directories declared in a manifest cannot be revoked. That is what `cleanup.sh` is for; `flatpak run --sandbox` gives a throwaway sandbox.
 - **Do not grant `--filesystem=home` or `host` to untrusted apps.** Flatpak cannot mask a host path that does not exist yet. If `~/.bash_profile` is missing, an app with `home` can create it despite the mask. Grant narrow directories or use portals.
 - **Per-app overrides win over the global one.** Anything you granted to a single app earlier (for example with Flatseal) still applies after `lockdown.sh`. Check with `ls ~/.local/share/flatpak/overrides`.
@@ -38,7 +38,7 @@ To undo: `flatpak override --user --reset` (and `flatpak override --user --reset
 
 ## Tests
 
-`bash tests/test.sh` runs both scripts against a fake `flatpak` and checks the generated commands. It touches nothing real.
+`bash tests/test.sh` runs both scripts against a fake `flatpak` and checks the generated commands. It touches nothing real. It also checks that `host-root` is only sent on flatpak >= 1.17, that a too-old flatpak changes nothing, and that a failing deny aborts before any grant.
 
 ## 🗂️ License
 
