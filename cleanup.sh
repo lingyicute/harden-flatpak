@@ -32,7 +32,7 @@ echo "正在执行清理操作..."
 
 # 杀掉所有实例并等它们真正退出；还有实例在跑就不删数据（以防它们把数据写回来）
 stop_instances() {
-    flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
+    LC_ALL=C flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
     for _ in $(seq 30); do
         instances=$(LC_ALL=C flatpak ps --columns=instance)
         [ -z "$instances" ] && return 0
