@@ -14,7 +14,7 @@ echo "$*" >> "$LOG"
 case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
 list) echo org.a.App ;;
-info) printf '[Session Bus Policy]\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;\n' ;;
+info) printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n' ;;
 ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242 ;;
 documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
 esac
@@ -27,6 +27,9 @@ want() { grep -qxF -- "$1" "$LOG" || { echo "FAIL: missing: $1"; fail=1; }; }
 deny() { ! grep -qxF -- "$1" "$LOG" || { echo "FAIL: unexpected: $1"; fail=1; }; }
 
 : > "$LOG"; bash "$root/lockdown.sh" > /dev/null
+want 'override --user --reset'
+want 'list --app --columns=ref'
+want 'info --show-permissions org.a.App'
 want 'override --user --nosocket=wayland'
 want 'override --user --nodevice=dri'
 want 'override --user --nofilesystem=host:reset'
@@ -37,10 +40,13 @@ want 'override --user --nofilesystem=~/.netrc'
 want 'override --user --no-talk-name=org.freedesktop.impl.portal.desktop.gnome'
 want 'override --user --no-talk-name=org.x.Y'
 want 'override --user --no-talk-name=org.kde.*'
+deny 'override --user --no-talk-name=# comment'
 want 'override --user --system-no-talk-name=org.z.W'
 want 'override --user --remove-policy=Tracker3.dbus:org.t.M=a:b'
 want 'override --user --remove-policy=Tracker3.dbus:org.t.M=c:d'
+want 'override --user --remove-policy=Tracker3.dbus:org.t.M=k=v'
 deny 'override --user --remove-policy=Tracker3.dbus:org.t.M=!e:f'
+want 'override --user --reset com.github.tchx84.Flatseal'
 want 'override --user --socket=wayland com.github.tchx84.Flatseal'
 want 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
 deny 'override --user --socket=wayland'
@@ -52,12 +58,15 @@ deny 'override --user --talk-name=org.gnome.Software com.github.tchx84.Flatseal'
 deny 'override --user --nofilesystem=host-root'
 want 'override --user --nofilesystem=host:reset'
 
-# flatpak too old: abort and change nothing
+# flatpak too old or malformed version: abort and change nothing
 : > "$LOG"; ! FAKE_FLATPAK_VERSION=1.14.0 bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: old flatpak accepted"; fail=1; }
 ! grep -q '^override' "$LOG" || { echo "FAIL: old flatpak: override was called"; fail=1; }
+: > "$LOG"; ! FAKE_FLATPAK_VERSION=unknown bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: non-numeric flatpak version accepted"; fail=1; }
+! grep -q '^override' "$LOG" || { echo "FAIL: non-numeric flatpak version: override was called"; fail=1; }
 
 # a failing deny must abort before any grant (set -e, no partial re-grant)
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
+deny 'override --user --reset com.github.tchx84.Flatseal'
 deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
 
 # cleanup must refuse to delete data if an instance is still running
