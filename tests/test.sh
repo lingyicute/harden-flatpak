@@ -15,6 +15,8 @@ case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
 list) echo org.a.App ;;
 info) printf '[Session Bus Policy]\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;\n' ;;
+ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242 ;;
+documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
 esac
 exit 0
 EOS
@@ -58,7 +60,12 @@ want 'override --user --nofilesystem=host:reset'
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
 
+# cleanup must refuse to delete data if an instance is still running
+: > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }
+[ -f "$HOME/.var/app/org.a.App/data/x" ] || { echo "FAIL: data deleted while instance running"; fail=1; }
+
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
+want 'document-unexport --doc-id doc1'
 [ -z "$(ls -A "$HOME/.var/app")" ] || { echo "FAIL: ~/.var/app not empty"; fail=1; }
 [ -z "$(ls -A "$XDG_RUNTIME_DIR/app")" ] || { echo "FAIL: runtime app dir not empty"; fail=1; }
 
