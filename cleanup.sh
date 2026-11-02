@@ -32,12 +32,14 @@ echo "正在执行清理操作..."
 
 # 杀掉所有实例并等它们真正退出；还有实例在跑就不删数据（以防它们把数据写回来）
 stop_instances() {
-    LC_ALL=C flatpak ps --columns=instance | xargs -rn1 flatpak kill || true
     for _ in $(seq 30); do
         instances=$(LC_ALL=C flatpak ps --columns=instance)
         [ -z "$instances" ] && return 0
+        printf '%s\n' "$instances" | xargs -rn1 flatpak kill || true
         sleep 0.1
     done
+    instances=$(LC_ALL=C flatpak ps --columns=instance)
+    [ -z "$instances" ] && return 0
     echo "错误：仍有 Flatpak 实例在运行，未删除任何数据" >&2
     exit 1
 }
@@ -48,13 +50,16 @@ LC_ALL=C flatpak documents --columns=id | grep -v ' ' | xargs -rn1 flatpak docum
 stop_instances
 
 # -H：~/.var/app 本身是符号链接时也照常清理链接指向的目录
+# 先恢复目录 u+rwx 权限，防止应用通过 chmod 000 锁死子目录以逃避清理或导致脚本中断
 if [ -d "$app_data_dir" ]; then
+    find -H "$app_data_dir" -mindepth 1 -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
     find -H "$app_data_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 fi
 
 # 同一登录会话内的运行期应用状态 $XDG_RUNTIME_DIR/app/*（重启才会自己消失）
-if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/app" ]; then
-    find -H "$XDG_RUNTIME_DIR/app" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/app" ] && [ ! -L "$XDG_RUNTIME_DIR/app" ]; then
+    find -P "$XDG_RUNTIME_DIR/app" -mindepth 1 -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
+    find -P "$XDG_RUNTIME_DIR/app" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 fi
 
 echo "清理完成！"

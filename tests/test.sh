@@ -4,8 +4,9 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/run" LOG="$tmp/calls.log"
-mkdir -p "$HOME/.var/app/org.a.App/data" "$XDG_RUNTIME_DIR/app/org.a.App" "$tmp/bin"
-touch "$HOME/.var/app/org.a.App/data/x" "$XDG_RUNTIME_DIR/app/org.a.App/y"
+mkdir -p "$HOME/.var/app/org.a.App/data/locked" "$XDG_RUNTIME_DIR/app/org.a.App/locked" "$tmp/bin"
+touch "$HOME/.var/app/org.a.App/data/x" "$HOME/.var/app/org.a.App/data/locked/z" "$XDG_RUNTIME_DIR/app/org.a.App/y" "$XDG_RUNTIME_DIR/app/org.a.App/locked/w"
+chmod 000 "$HOME/.var/app/org.a.App/data/locked" "$XDG_RUNTIME_DIR/app/org.a.App/locked"
 
 cat > "$tmp/bin/flatpak" <<'EOS'
 #!/bin/bash
@@ -78,10 +79,17 @@ deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore co
 : > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }
 [ -f "$HOME/.var/app/org.a.App/data/x" ] || { echo "FAIL: data deleted while instance running"; fail=1; }
 
+# cleanup must wipe data including chmod 000 subdirectories
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
 want 'document-unexport --doc-id doc1'
 [ -z "$(ls -A "$HOME/.var/app")" ] || { echo "FAIL: ~/.var/app not empty"; fail=1; }
 [ -z "$(ls -A "$XDG_RUNTIME_DIR/app")" ] || { echo "FAIL: runtime app dir not empty"; fail=1; }
+
+# cleanup must not follow a symlinked $XDG_RUNTIME_DIR/app
+mkdir -p "$tmp/outside"; touch "$tmp/outside/keep"
+rmdir "$XDG_RUNTIME_DIR/app"; ln -s "$tmp/outside" "$XDG_RUNTIME_DIR/app"
+: > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
+[ -f "$tmp/outside/keep" ] || { echo "FAIL: followed symlinked XDG_RUNTIME_DIR/app"; fail=1; }
 
 [ $fail = 0 ] && echo "all tests passed"
 exit $fail
