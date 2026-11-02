@@ -18,7 +18,7 @@ kFlatsealSocketAccess=("wayland")
 kFlatsealFilesystemAccess=("/var/lib/flatpak/app:ro" "xdg-data/flatpak/app:ro" "xdg-data/flatpak/overrides:create")
 kFlatsealNameAccess=("org.freedesktop.impl.portal.PermissionStore")
 kMinFlatpak=1.16.0   # --nousb needs 1.16
-ver_ge() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]; }
+ver_ge() { [[ "$1" =~ ^[0-9]+(\.[0-9]+)+ ]] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]; }
 kFlatpakVersion=$(flatpak --version | awk '{print $2}')
 if ! ver_ge "${kFlatpakVersion}" "${kMinFlatpak}"; then
     echo "error: flatpak ${kFlatpakVersion:-unknown} is too old, need >= ${kMinFlatpak}; nothing was changed." >&2
@@ -29,6 +29,9 @@ echo "This will configure flatpak to automatically reject most permissions, incl
 echo "This will also grant Flatseal access to certain permissions to allow them to operate and make reconfiguring much easier."
 echo "NOTE: This will break just about all Flatpaks by default, it is ON YOU to configure them to work with this configuration."
 echo ""
+    echo "-- Resetting Global Overrides --"
+    ${kCommand} --reset
+
     echo "-- Share Permissions --"
     for i in "${kSharePermissions[@]}"; do
         echo "	Rejecting ${i}..."
@@ -92,23 +95,34 @@ echo ""
     echo "-- Bus Names And Policies Requested By Installed Apps --"
     echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
     echo "This also rejects every bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
-    flatpak list --app --columns=application | while IFS= read -r app; do
-        [ -z "${app}" ] || flatpak info --show-permissions "${app}" < /dev/null
-    done | awk -F= '
-        /^\[/ { sec = $0; next }
-        NF == 2 && $2 != "none" && sec == "[Session Bus Policy]" { print "--no-talk-name=" $1 }
-        NF == 2 && $2 != "none" && sec == "[System Bus Policy]"  { print "--system-no-talk-name=" $1 }
-        NF == 2 && sec ~ /^\[Policy .+\]$/ {
-            n = split($2, v, ";")
-            for (i = 1; i <= n; i++)
-                if (v[i] != "" && v[i] !~ /^!/) print "--remove-policy=" substr(sec, 9, length(sec) - 9) "." $1 "=" v[i]
-        }
-    ' | sort -u | while IFS= read -r flag; do
+    installed_flags=$(
+        flatpak list --app --columns=ref | sort -u | while IFS= read -r app; do
+            [ -z "${app}" ] || flatpak info --show-permissions "${app}" < /dev/null
+        done | awk '
+            /^[[:space:]]*(#|$)/ { next }
+            /^\[/ { sec = $0; next }
+            (idx = index($0, "=")) > 1 {
+                k = substr($0, 1, idx - 1)
+                val = substr($0, idx + 1)
+                if (val != "none" && sec == "[Session Bus Policy]") print "--no-talk-name=" k
+                else if (val != "none" && sec == "[System Bus Policy]") print "--system-no-talk-name=" k
+                else if (sec ~ /^\[Policy .+\]$/) {
+                    n = split(val, v, ";")
+                    for (i = 1; i <= n; i++)
+                        if (v[i] != "" && v[i] !~ /^!/) print "--remove-policy=" substr(sec, 9, length(sec) - 9) "." k "=" v[i]
+                }
+            }
+        ' | sort -u
+    )
+    while IFS= read -r flag; do
+        [ -z "${flag}" ] && continue
         echo "	Rejecting ${flag#*=}..."
         ${kCommand} "${flag}" < /dev/null
-    done
+    done <<< "${installed_flags}"
 
     echo "-- Granting Flatseal Access --"
+    echo "	Resetting Flatseal overrides..."
+    ${kCommand} --reset com.github.tchx84.Flatseal
     for i in "${kFlatsealSocketAccess[@]}"; do
         echo "	Granting socket ${i}..."
         ${kCommand} --socket="${i}" com.github.tchx84.Flatseal

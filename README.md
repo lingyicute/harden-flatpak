@@ -17,6 +17,7 @@ Both scripts are deliberately tiny so that they can be audited at a glance.
 
 ## What `lockdown.sh` does
 
+- Starts by resetting the user-level global override and Flatseal's override (`flatpak override --user --reset`, no confirmation, no backup), so the result does not depend on earlier runs. Per-app overrides of other apps are left alone.
 - Denies every Flatpak permission type (`--unshare`, `--nosocket`, `--nodevice`, `--disallow`, `--nousb=all`, `--remove-policy`), including `wayland` and `dri`, for all apps. Nothing is persisted (`--persist` is never granted).
 - Denies all filesystem access (`host:reset`, `home`, `host`, `host-os`, `host-etc`) plus a list of sandbox-escape and credential paths (shell init files, `~/.config/systemd`, `~/.local/share/dbus-1/services`, `~/.ssh`, `~/.gnupg`, `~/.netrc`, `~/.password-store`, `xdg-data/flatpak/overrides`, mounted media, ...), so they stay masked even if you later grant `--filesystem=home` to one app.
 - Denies a static list of D-Bus names, including the concrete portal backends (`org.freedesktop.impl.portal.desktop.*`, `...Secret`, `...PermissionStore`) and the Flatpak/systemd escape names.
