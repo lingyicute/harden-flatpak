@@ -50,16 +50,20 @@ LC_ALL=C flatpak documents --columns=id | grep -v ' ' | xargs -rn1 flatpak docum
 stop_instances
 
 # -H：~/.var/app 本身是符号链接时也照常清理链接指向的目录
-# 先恢复目录 u+rwx 权限，防止应用通过 chmod 000 锁死子目录以逃避清理或导致脚本中断
+# 先恢复目录 u+rwx 权限，防止应用通过 chmod 000 锁死目录以逃避清理或导致脚本中断
 if [ -d "$app_data_dir" ]; then
-    find -H "$app_data_dir" -mindepth 1 -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
+    find -H "$app_data_dir" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
     find -H "$app_data_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 fi
 
-# 同一登录会话内的运行期应用状态 $XDG_RUNTIME_DIR/app/*（重启才会自己消失）
+# 同一登录会话内的运行期应用状态 $XDG_RUNTIME_DIR/app/* 及 $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run}
 if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/app" ] && [ ! -L "$XDG_RUNTIME_DIR/app" ]; then
-    find -P "$XDG_RUNTIME_DIR/app" -mindepth 1 -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
+    find -P "$XDG_RUNTIME_DIR/app" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
     find -P "$XDG_RUNTIME_DIR/app" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+fi
+if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/.flatpak" ] && [ ! -L "$XDG_RUNTIME_DIR/.flatpak" ]; then
+    find -P "$XDG_RUNTIME_DIR/.flatpak" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
+    find -P "$XDG_RUNTIME_DIR/.flatpak" -mindepth 2 -maxdepth 2 \( -name tmp -o -name xdg-run \) -exec rm -rf -- {} +
 fi
 
 echo "清理完成！"
