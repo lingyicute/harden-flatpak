@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 set -euo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
 export LC_ALL=C
 
 # Forked from https://github.com/secureblue/secureblue/blob/live/files/system/desktop/usr/libexec/secureblue/flatpak-permissions-lockdown 21d8fd869d1da9fb8a974bb8e503dc90bde8a087
@@ -18,8 +19,8 @@ kFlatsealSocketAccess=("wayland")
 kFlatsealFilesystemAccess=("/var/lib/flatpak/app:ro" "xdg-data/flatpak/app:ro" "xdg-data/flatpak/overrides:create")
 kFlatsealNameAccess=("org.freedesktop.impl.portal.PermissionStore")
 kMinFlatpak=1.16.0   # --nousb needs 1.16
-ver_ge() { [[ "$1" =~ ^[0-9]+(\.[0-9]+)+ ]] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]; }
-kFlatpakVersion=$(flatpak --version | awk '{print $2}')
+ver_ge() { [[ "$1" =~ ^[0-9]+(\.[0-9]+)+$ ]] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]; }
+kFlatpakVersion=$(flatpak --version | awk 'NR==1 {print $2}')
 if ! ver_ge "${kFlatpakVersion}" "${kMinFlatpak}"; then
     echo "error: flatpak ${kFlatpakVersion:-unknown} is too old, need >= ${kMinFlatpak}; nothing was changed." >&2
     exit 1

@@ -14,7 +14,7 @@ echo "$*" >> "$LOG"
 [[ -n "${FAKE_FAIL_ON:-}" && " $* " == *" $FAKE_FAIL_ON "* ]] && exit 1
 case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
-list) echo org.a.App ;;
+list) printf 'org.a.App\norg.b.App\n' ;;
 info) printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n' ;;
 ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242 ;;
 documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
@@ -69,11 +69,15 @@ want 'override --user --nofilesystem=host:reset'
 ! grep -q '^override' "$LOG" || { echo "FAIL: old flatpak: override was called"; fail=1; }
 : > "$LOG"; ! FAKE_FLATPAK_VERSION=unknown bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: non-numeric flatpak version accepted"; fail=1; }
 ! grep -q '^override' "$LOG" || { echo "FAIL: non-numeric flatpak version: override was called"; fail=1; }
+: > "$LOG"; ! FAKE_FLATPAK_VERSION=1.20.abc bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: trailing-alpha flatpak version accepted"; fail=1; }
+! grep -q '^override' "$LOG" || { echo "FAIL: trailing-alpha flatpak version: override was called"; fail=1; }
 
-# a failing deny must abort before any grant (set -e, no partial re-grant)
+# a failing deny or failing info in subshell must abort before any grant (set -e, no partial re-grant)
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
 deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
+: > "$LOG"; ! FAKE_FAIL_ON='org.a.App' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed info in subshell ignored"; fail=1; }
+deny 'override --user --reset com.github.tchx84.Flatseal'
 
 # cleanup must refuse to delete data if an instance is still running
 : > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }
