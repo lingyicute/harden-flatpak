@@ -47,8 +47,8 @@
 
   /* ---------- buttons (M3) ---------- */
   .btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 24px;border-radius:999px;font-weight:600;font-size:.9375rem;letter-spacing:.01em;transition:box-shadow .2s var(--ease),border-radius .25s var(--ease-emph),transform .2s var(--ease);isolation:isolate}
-  .btn::before{content:"";position:absolute;inset:0;background:currentColor;opacity:0;transition:opacity .2s;z-index:-1}
-  .btn:hover::before{opacity:.08}.btn:active::before,.btn:focus-visible::before{opacity:.12}
+  .btn::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;background:currentColor;opacity:0;transition:opacity .2s;z-index:-1}
+  .btn:hover::before{opacity:.08}.btn:active::before{opacity:.12}.btn:focus-visible::before{opacity:.12}
   .btn:active{border-radius:16px}
   .btn svg.i{width:20px;height:20px}
   .btn-filled{background:var(--primary);color:var(--on-primary)}
@@ -62,7 +62,7 @@
   .ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.18;transform:scale(0);animation:rip .6s var(--ease) forwards;pointer-events:none;z-index:-1}
   @keyframes rip{to{transform:scale(1);opacity:0}}
   .icon-btn{position:relative;overflow:hidden;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--on-surface-variant);isolation:isolate}
-  .icon-btn::before{content:"";position:absolute;inset:0;background:currentColor;opacity:0;transition:opacity .2s;z-index:-1}
+  .icon-btn::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;background:currentColor;opacity:0;transition:opacity .2s;z-index:-1}
   .icon-btn:hover::before{opacity:.08}.icon-btn:active::before{opacity:.12}
 
   /* ---------- top app bar ---------- */
@@ -73,7 +73,7 @@
   .brand-logo{width:40px;height:40px;border-radius:14px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center}
   nav.links{display:none;margin-left:auto;gap:4px}
   nav.links a{padding:10px 16px;border-radius:999px;font-size:.9rem;font-weight:500;color:var(--on-surface-variant);transition:background .2s}
-  nav.links a:hover{background:color-mix(in oklab,var(--on-surface) 8%,transparent)}
+  nav.links a:hover{background:var(--sc-high);background:color-mix(in oklab,var(--on-surface) 8%,transparent)}
   nav.links a.active{background:var(--secondary-container);color:var(--on-secondary-container)}
   .bar-actions{display:flex;align-items:center;gap:4px;margin-left:auto}
   @media(min-width:900px){nav.links{display:flex}.bar-actions{margin-left:8px}}
@@ -84,7 +84,7 @@
   .pop.open .pop-card{opacity:1;transform:none;pointer-events:auto}
   .pop-card h4{font-size:.8rem;font-weight:600;color:var(--on-surface-variant);margin:0 0 10px;letter-spacing:.04em}
   .seeds{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
-  .seed{aspect-ratio:1;border-radius:50%;border:2px solid transparent;position:relative;transition:border-radius .25s var(--ease-emph),transform .2s}
+  .seed{min-height:33px;aspect-ratio:1;border-radius:50%;border:2px solid transparent;position:relative;transition:border-radius .25s var(--ease-emph),transform .2s}
   .seed:hover{transform:scale(1.08)}
   .seed[aria-pressed="true"]{border-radius:30%;border-color:var(--on-surface)}
   .seg{display:flex;border:1px solid var(--outline);border-radius:999px;overflow:hidden}
@@ -104,16 +104,16 @@
   .hero p.lead{font-size:1.2rem;margin-bottom:32px}
   .cta{display:flex;flex-wrap:wrap;gap:12px}
   .art-wrap{position:relative;width:100%;max-width:460px;margin:0 auto}
-  .hero-art{position:relative;aspect-ratio:1;width:100%;display:grid;place-items:center;border-radius:50%;overflow:hidden}
-  .blob{position:absolute;inset:0;background:var(--primary-container);animation:morph 12s ease-in-out infinite;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%}
-  .blob.b2{inset:14%;background:var(--tertiary-container);animation-duration:9s;animation-direction:reverse}
-  .blob.b3{inset:30%;background:var(--primary);animation-duration:7s}
+  .hero-art{position:relative;width:100%;padding-top:100%;border-radius:50%;overflow:hidden}
+  .blob{position:absolute;top:0;right:0;bottom:0;left:0;background:var(--primary-container);animation:morph 12s ease-in-out infinite;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%}
+  .blob.b2{top:14%;right:14%;bottom:14%;left:14%;background:var(--tertiary-container);animation-duration:9s;animation-direction:reverse}
+  .blob.b3{top:30%;right:30%;bottom:30%;left:30%;background:var(--primary);animation-duration:7s}
   @keyframes morph{
     0%,100%{border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;transform:rotate(0)}
     33%{border-radius:61% 39% 40% 60% / 55% 62% 38% 45%;transform:rotate(20deg)}
     66%{border-radius:35% 65% 52% 48% / 62% 36% 64% 38%;transform:rotate(-14deg)}
   }
-  .shield{position:relative;width:34%;color:var(--on-primary);filter:drop-shadow(0 6px 12px rgba(0,0,0,.2))}
+  svg.shield{position:absolute;top:33%;left:33%;width:34%;height:34%;color:var(--on-primary);filter:drop-shadow(0 6px 12px rgba(0,0,0,.2))}
   .float{position:absolute;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:16px;font-size:.8rem;font-weight:600;font-family:var(--mono);box-shadow:0 2px 6px rgba(0,0,0,.2);animation:bob 5s ease-in-out infinite}
   .float svg.i{width:18px;height:18px}
   .f1{top:4%;left:0;background:var(--error-container);color:var(--on-error-container)}
@@ -139,7 +139,7 @@
   .card h3{font-size:1.35rem;font-weight:600;margin-bottom:8px}
   .card p{color:inherit;opacity:.82;font-size:.975rem}
   .card ul{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;list-style:none}
-  .card li{font-family:var(--mono);font-size:.78rem;padding:5px 11px;border-radius:999px;background:color-mix(in oklab,currentColor 12%,transparent)}
+  .card li{font-family:var(--mono);font-size:.78rem;padding:5px 11px;border-radius:999px;background:rgba(128,128,128,.15);background:color-mix(in oklab,currentColor 12%,transparent)}
   .t-primary{background:var(--primary-container);color:var(--on-primary-container)}
   .t-primary .ico{background:var(--primary);color:var(--on-primary)}
   .t-secondary{background:var(--secondary-container);color:var(--on-secondary-container)}
@@ -188,7 +188,7 @@
   .cmd code{background:none!important;padding:0!important;flex:1 1 auto;min-width:0;white-space:nowrap;overflow-x:auto;scrollbar-width:none;font-size:inherit}
   .cmd code::-webkit-scrollbar{display:none}
   .cmd button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--primary);flex:none;position:relative;overflow:hidden}
-  .cmd button:hover{background:color-mix(in oklab,var(--primary) 10%,transparent)}
+  .cmd button:hover{background:rgba(128,128,128,.12);background:color-mix(in oklab,var(--primary) 10%,transparent)}
   .cmd button svg.i{width:20px;height:20px}
 
   /* ---------- warning ---------- */
@@ -212,14 +212,14 @@
 
   /* ---------- CTA band ---------- */
   .band{background:var(--primary);color:var(--on-primary);border-radius:44px 44px 44px 44px;padding:56px 48px;text-align:left;position:relative;overflow:hidden}
-  .band::before,.band::after{content:"";position:absolute;background:color-mix(in oklab,var(--on-primary) 10%,transparent);border-radius:42% 58% 63% 37%/41% 44% 56% 59%;animation:morph 14s ease-in-out infinite}
+  .band::before,.band::after{content:"";position:absolute;background:rgba(255,255,255,.1);background:color-mix(in oklab,var(--on-primary) 10%,transparent);border-radius:42% 58% 63% 37%/41% 44% 56% 59%;animation:morph 14s ease-in-out infinite}
   .band::before{width:320px;height:320px;right:-80px;top:-110px}
   .band::after{width:260px;height:260px;left:-70px;bottom:-120px;animation-direction:reverse}
   .band>*{position:relative;z-index:1}
   .band h2{font-size:clamp(1.7rem,4vw,2.8rem);font-weight:600;margin-bottom:12px;line-height:1.15;max-width:20ch}
   .band p{opacity:.9;max-width:46ch;margin:0 0 28px}
   .band .btn-filled{background:var(--on-primary);color:var(--primary)}
-  .band .btn-outlined{color:var(--on-primary);border-color:color-mix(in oklab,var(--on-primary) 55%,transparent)}
+  .band .btn-outlined{color:var(--on-primary);border-color:var(--on-primary);border-color:color-mix(in oklab,var(--on-primary) 55%,transparent)}
   .band .cta{justify-content:flex-start}
 
   footer{padding:40px 0 56px;color:var(--on-surface-variant);font-size:.875rem}
@@ -374,7 +374,7 @@
       <div class="art-wrap">
         <div class="hero-art" aria-hidden="true">
           <div class="blob"></div><div class="blob b2"></div><div class="blob b3"></div>
-          <svg class="i shield" style="width:34%;height:auto;aspect-ratio:1"><use href="#i-shield-lock"/></svg>
+          <svg class="i shield" viewBox="0 0 24 24"><use href="#i-shield-lock"/></svg>
         </div>
         <span class="float f1"><svg class="i"><use href="#i-block"/></svg>--nosocket=x11</span>
         <span class="float f2"><svg class="i"><use href="#i-lock"/></svg>~/.ssh masked</span>
@@ -586,12 +586,22 @@
   var root = document.documentElement;
 
   /* ================= Material You dynamic colour (OKLCH tonal palette) ================= */
+  var ok = window.CSS && CSS.supports && CSS.supports('color','oklch(0% 0 0)');
   function L(t){ // tone(0-100) -> approx OKLab lightness
     if(t<=0) return 0; if(t>=100) return 1;
     var y = t>8 ? Math.pow((t+16)/116,3) : t/903.3;
     return Math.cbrt(y);
   }
-  function c(h,ch,t){return 'oklch('+(L(t)*100).toFixed(2)+'% '+ch+' '+h+')'}
+  function c(h,ch,t){
+    var l=L(t);
+    if(ok) return 'oklch('+(l*100).toFixed(2)+'% '+ch+' '+h+')';
+    var r=h*Math.PI/180, a=ch*Math.cos(r), b=ch*Math.sin(r),
+        l_=Math.pow(l+.3963377774*a+.2158037573*b,3),
+        m_=Math.pow(l-.1055613458*a-.0638541728*b,3),
+        s_=Math.pow(l-.0894841775*a-1.2914855480*b,3);
+    function g(x){x=x<=.0031308?12.92*x:1.055*Math.pow(Math.max(0,x),1/2.4)-.055;return Math.round(Math.max(0,Math.min(1,x))*255)}
+    return 'rgb('+g(4.0767416621*l_-3.3077115913*m_+.2309699292*s_)+','+g(-1.2684380046*l_+2.6097574011*m_-.3413193965*s_)+','+g(-.0041960863*l_-.7034186147*m_+1.7076147010*s_)+')';
+  }
 
   function scheme(h,dark){
     var t=(h+60)%360, n=h;
