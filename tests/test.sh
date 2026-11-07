@@ -58,16 +58,10 @@ for a in org.a.App org.b.App; do
     want_app "$a" '--system-no-talk-name=org.z.W'
 done
 want 'override --user --no-talk-name=org.gnome.Mutter.RemoteDesktop'
-want 'override --user --nofilesystem=~/.netrc'
 want 'override --user --nofilesystem=~/.aws'
 want 'override --user --nofilesystem=~/.config/gh'
 want 'override --user --nofilesystem=xdg-run/systemd'
 want 'override --user --nofilesystem=xdg-run/dbus-1'
-want 'override --user --nofilesystem=xdg-run/bus'
-want 'override --user --nofilesystem=xdg-run/wayland-0'
-want 'override --user --nofilesystem=xdg-run/wayland-1'
-want 'override --user --nofilesystem=xdg-run/ssh-agent'
-want 'override --user --nofilesystem=xdg-run/openssh_agent'
 want 'override --user --nofilesystem=xdg-config/hypr'
 want 'override --user --nofilesystem=~/.bashrc.d'
 want 'override --user --nofilesystem=~/.vscode'
@@ -90,6 +84,10 @@ want 'override --user --nofilesystem=~/.config/chromium'
 want 'override --user --nofilesystem=xdg-config/chromium'
 want 'override --user --nofilesystem=~/.config/BraveSoftware'
 want 'override --user --nofilesystem=xdg-config/BraveSoftware'
+# files, sockets and top-level dirs can never be masked: not listed
+for x in '~/.bashrc' '~/.profile' '~/.netrc' xdg-config/kdeglobals xdg-run/bus xdg-run/wayland-0 xdg-run/wayland-1 xdg-run/ssh-agent xdg-run/openssh_agent xdg-run/pipewire-0 /run/docker.sock xdg-run/docker.sock /run/podman /run/libvirt /home /var/home /media /run/media /mnt /var /root /boot; do
+    deny "override --user --nofilesystem=$x"
+done
 deny 'override --user --nofilesystem=/run'   # reserved by flatpak, always a no-op
 deny 'override --user --nofilesystem=xdg-run/.flatpak'   # collides with flatpak's own runtime-dir symlink
 want 'override --user --nofilesystem=xdg-data/flatpak'

@@ -411,8 +411,8 @@
         <article class="card c-b t-tertiary rv">
           <div class="ico"><svg class="i"><use href="#i-folder"/></svg></div>
           <h3>文件系统与凭据路径封锁</h3>
-          <p>拒绝 <code>home</code>、<code>host</code>、<code>host-os</code>、<code>host-etc</code>，并对敏感路径持续遮蔽——即使日后给某个应用授予 <code>--filesystem=home</code>，这些路径依然被屏蔽。</p>
-          <ul><li>~/.ssh</li><li>~/.gnupg</li><li>~/.netrc</li><li>~/.password-store</li><li>shell 初始化文件</li><li>~/.config/systemd</li></ul>
+          <p>拒绝 <code>home</code>、<code>host</code>、<code>host-os</code>、<code>host-etc</code>，并对敏感目录持续遮蔽——即使日后给某个应用授予 <code>--filesystem=home</code>，这些已存在的目录依然被屏蔽（文件与套接字无法被遮蔽）。</p>
+          <ul><li>~/.ssh</li><li>~/.gnupg</li><li>~/.password-store</li><li>~/.aws</li><li>~/.config/systemd</li></ul>
         </article>
         <article class="card c-c t-secondary rv">
           <div class="ico"><svg class="i"><use href="#i-hub"/></svg></div>
@@ -530,7 +530,7 @@
         </details>
         <details>
           <summary>不要给不可信应用 <code>home</code> 或 <code>host</code><svg class="i"><use href="#i-expand"/></svg></summary>
-          <div class="body">Flatpak 无法遮蔽尚不存在的宿主路径。如果 <code>~/.bash_profile</code> 不存在，拥有 <code>home</code> 的应用可以绕过遮蔽创建它。<b>请授予更窄的目录，或使用 portal。</b></div>
+          <div class="body">Flatpak 只能用 tmpfs 遮蔽已存在的目录。文件和套接字（<code>~/.bashrc</code>、<code>~/.profile</code>、<code>~/.netrc</code>、<code>xdg-run/bus</code> 等）永远不会被遮蔽，拥有 <code>home</code> 的应用可以读写它们；<code>host</code> 还会暴露 <code>/mnt</code>、<code>/media</code>、<code>/run/media</code> 与 <code>/home</code>，因为授权优先于遮蔽。<b>请授予更窄的目录，或使用 portal。</b></div>
         </details>
         <details>
           <summary>针对单个应用的 override 优先于全局设置<svg class="i"><use href="#i-expand"/></svg></summary>
@@ -714,7 +714,7 @@
       ['dm','# 示意输出，非脚本原始日志'],
       ['','→ 拒绝全部权限类型 (unshare / nosocket / nodevice / disallow / nousb)'],
       ['','→ 拒绝文件系统：host:reset home host host-os host-etc'],
-      ['','→ 屏蔽凭据与逃逸路径：~/.ssh ~/.gnupg ~/.netrc ~/.password-store …'],
+      ['','→ 屏蔽已存在的凭据与逃逸目录：~/.ssh ~/.gnupg ~/.password-store …'],
       ['','→ 拒绝静态会话 D-Bus 名单与 portal 后端；系统总线名称按应用逐个拒绝'],
       ['','→ 读取各安装位置已安装应用的清单与合并权限 (flatpak info --show-metadata / --show-permissions)'],
       ['','→ 为 Flatseal 重新授予最小权限'],
