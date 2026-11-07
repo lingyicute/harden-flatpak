@@ -134,7 +134,7 @@ echo ""
         done < <(grep '^--system-no-talk-name=' <<< "${app_flags}" || true)
         if [ "${#system_args[@]}" -gt 0 ]; then
             for i in "${kKnownSystemBusNames[@]}"; do system_args+=("--system-no-talk-name=${i}"); done
-            echo "\tRejecting system bus names for ${ref%%/*}..."
+            echo "	Rejecting system bus names for ${ref%%/*}..."
             "${kCommand[@]}" "${system_args[@]}" "${ref%%/*}" < /dev/null
         fi
     done <<< "${installed_apps}"
