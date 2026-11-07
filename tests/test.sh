@@ -71,6 +71,7 @@ want 'override --user --nofilesystem=~/.config/chromium'
 want 'override --user --nofilesystem=xdg-config/chromium'
 want 'override --user --nofilesystem=~/.config/BraveSoftware'
 want 'override --user --nofilesystem=xdg-config/BraveSoftware'
+deny 'override --user --nofilesystem=/run'   # reserved by flatpak, always a no-op
 deny 'override --user --nofilesystem=xdg-run/.flatpak'   # collides with flatpak's own runtime-dir symlink
 want 'override --user --nofilesystem=xdg-data/flatpak'
 want 'override --user --no-talk-name=org.freedesktop.impl.portal.desktop.gnome'
