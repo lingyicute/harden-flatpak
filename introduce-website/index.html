@@ -422,7 +422,7 @@
         <article class="card c-d t-error rv">
           <div class="ico"><svg class="i"><use href="#i-delete"/></svg></div>
           <h3>cleanup.sh 一键清理</h3>
-          <p>结束所有 Flatpak 进程，取消导出文档，清空 <code>~/.var/app/*</code> 与 <code>$XDG_RUNTIME_DIR/app/*</code>。</p>
+          <p>结束所有 Flatpak 进程，取消导出文档，清空 <code>~/.var/app/*</code>、<code>$XDG_RUNTIME_DIR/app/*</code>、<code>$XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run}</code> 与 <code>/dev/shm/flatpak-*</code>。</p>
         </article>
         <article class="card c-e t-neutral rv">
           <div class="ico"><svg class="i"><use href="#i-refresh"/></svg></div>
@@ -726,6 +726,7 @@
       ['','→ 取消导出文档'],
       ['','→ 清空 ~/.var/app/*'],
       ['','→ 清空 $XDG_RUNTIME_DIR/app/*'],
+      ['','→ 清空 $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run} 与 /dev/shm/flatpak-*'],
       ['dm','i Portal 决定仅显示，不会删除：flatpak permissions'],
       ['ok','✔ 清理完毕']
     ],
