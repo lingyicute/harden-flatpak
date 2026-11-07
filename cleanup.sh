@@ -68,6 +68,14 @@ if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/.flatpak" ] && [ ! -L
     find -P "$XDG_RUNTIME_DIR/.flatpak" -mindepth 2 -maxdepth 2 \( -name tmp -o -name xdg-run \) -exec rm -rf -- {} +
 fi
 
+# 以 per-app-dev-shm 运行过的应用，其 /dev/shm 是宿主机上的 /dev/shm/flatpak-$APP_ID-XXXXXX（内存中，应用可写）。
+# 只处理属于当前用户的真实目录，不跟随符号链接。CLEANUP_SHM_DIR 仅供测试覆盖。
+for shm in "${CLEANUP_SHM_DIR:-/dev/shm}"/flatpak-*; do
+    [ -d "$shm" ] && [ ! -L "$shm" ] && [ -O "$shm" ] || continue
+    find -P "$shm" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
+    rm -rf -- "$shm"
+done
+
 echo "清理完成！"
 echo ""
 

@@ -6,7 +6,7 @@ lockdown script configures Flatpak to automatically reject most permissions, whi
 
 ```console
 $ bash lockdown.sh   # default-deny user-level overrides; re-run after installing apps
-$ bash cleanup.sh    # kill Flatpaks, unexport documents, wipe ~/.var/app/* and $XDG_RUNTIME_DIR/app/*
+$ bash cleanup.sh    # kill Flatpaks, unexport documents, wipe ~/.var/app/*, $XDG_RUNTIME_DIR/app/*, $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run} and /dev/shm/flatpak-*
 ```
 
 Both scripts are deliberately tiny so that they can be audited at a glance. 
