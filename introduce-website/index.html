@@ -417,7 +417,7 @@
         <article class="card c-c t-secondary rv">
           <div class="ico"><svg class="i"><use href="#i-hub"/></svg></div>
           <h3>D-Bus 名称收紧</h3>
-          <p>拒绝静态名单（portal 后端、Secret、PermissionStore、Flatpak / systemd 逃逸名称），并读取已安装应用声明的总线名称，逐一拒绝。</p>
+          <p>拒绝静态会话总线名单（portal 后端、Secret、PermissionStore、Flatpak / systemd 逃逸名称），并读取已安装应用声明的总线名称，逐一拒绝。系统总线名称只对已声明系统总线策略的应用逐个拒绝，避免全局条目让每个应用都挂载系统总线代理。</p>
         </article>
         <article class="card c-d t-error rv">
           <div class="ico"><svg class="i"><use href="#i-delete"/></svg></div>
@@ -522,7 +522,7 @@
       <div class="acc rv">
         <details open>
           <summary>仍会挂载过滤后的会话总线与 AT-SPI 总线<svg class="i"><use href="#i-expand"/></svg></summary>
-          <div class="body"><code>--nosocket=session-bus</code> 只移除未过滤的总线。<code>flatpak run</code> 仍会挂载一个始终允许 <code>org.freedesktop.portal.*</code>（包含子沙箱 <code>Spawn()</code>）的过滤代理，以及无障碍总线代理。<b>如需完整的总线隔离，请使用 <code>flatpak run --sandbox</code> 运行应用。</b></div>
+          <div class="body"><code>--nosocket=session-bus</code> 只移除未过滤的总线。<code>flatpak run</code> 仍会挂载一个始终允许 <code>org.freedesktop.portal.*</code>（包含子沙箱 <code>Spawn()</code>）的过滤代理，以及无障碍总线代理。<b>如需完整的总线隔离，请使用 <code>flatpak run --sandbox</code> 运行应用。</b><code>--no-session-bus --no-a11y-bus</code> 只去掉这两条；声明了系统总线策略的应用（拒绝条目也算）仍会得到过滤后的系统总线代理。</div>
         </details>
         <details>
           <summary><span><code>~/.var/app/$APP_ID</code> 始终可写且跨运行保留</span><svg class="i"><use href="#i-expand"/></svg></summary>
@@ -715,7 +715,7 @@
       ['','→ 拒绝全部权限类型 (unshare / nosocket / nodevice / disallow / nousb)'],
       ['','→ 拒绝文件系统：host:reset home host host-os host-etc'],
       ['','→ 屏蔽凭据与逃逸路径：~/.ssh ~/.gnupg ~/.netrc ~/.password-store …'],
-      ['','→ 拒绝静态 D-Bus 名单与 portal 后端'],
+      ['','→ 拒绝静态会话 D-Bus 名单与 portal 后端；系统总线名称按应用逐个拒绝'],
       ['','→ 读取各安装位置已安装应用的清单与合并权限 (flatpak info --show-metadata / --show-permissions)'],
       ['','→ 为 Flatseal 重新授予最小权限'],
       ['ok','✔ 完成。安装新应用后请重新运行 lockdown.sh']
