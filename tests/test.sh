@@ -113,6 +113,12 @@ deny 'override --user --talk-name=org.gnome.Software com.github.tchx84.Flatseal'
 ! grep -q -- '--system-no-talk-name' "$LOG" || { echo "FAIL: system bus deny written for app without system policy"; fail=1; }
 want 'override --user --no-talk-name=org.x.Y'
 
+# the per-app override listing skips global and Flatseal but shows other apps
+mkdir -p "$HOME/.local/share/flatpak/overrides"; touch "$HOME/.local/share/flatpak/overrides/"{global,com.github.tchx84.Flatseal,org.c.App}
+out=$(env -u FLATPAK_USER_DIR -u XDG_DATA_HOME bash "$root/lockdown.sh")
+grep -qxF org.c.App <<< "$out" || { echo "FAIL: per-app override not listed"; fail=1; }
+! grep -qxF -e global -e com.github.tchx84.Flatseal <<< "$out" || { echo "FAIL: global/Flatseal override listed"; fail=1; }
+
 # flatpak 1.16 rejects host-root: must not be sent
 : > "$LOG"; FAKE_FLATPAK_VERSION=1.16.0 bash "$root/lockdown.sh" > /dev/null
 deny 'override --user --nofilesystem=host-root'
@@ -156,6 +162,12 @@ mkdir -p "$tmp/outside"; touch "$tmp/outside/keep"
 rmdir "$XDG_RUNTIME_DIR/app"; ln -s "$tmp/outside" "$XDG_RUNTIME_DIR/app"
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
 [ -f "$tmp/outside/keep" ] || { echo "FAIL: followed symlinked XDG_RUNTIME_DIR/app"; fail=1; }
+
+# cleanup must not follow a symlinked $XDG_RUNTIME_DIR/.flatpak either
+mkdir -p "$tmp/outside2/org.a.App/tmp"; touch "$tmp/outside2/org.a.App/tmp/keep"
+rm -rf "$XDG_RUNTIME_DIR/.flatpak"; ln -s "$tmp/outside2" "$XDG_RUNTIME_DIR/.flatpak"
+: > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
+[ -f "$tmp/outside2/org.a.App/tmp/keep" ] || { echo "FAIL: followed symlinked XDG_RUNTIME_DIR/.flatpak"; fail=1; }
 
 [ $fail = 0 ] && echo "all tests passed"
 exit $fail
