@@ -98,8 +98,21 @@ echo ""
     echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
     echo "This also rejects every bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
     installed_flags=$(
-        flatpak list --app --columns=ref | sort -u | while IFS= read -r app; do
-            [ -z "${app}" ] || flatpak info --show-permissions "${app}" < /dev/null
+        # Read every installation separately: the same ref can exist in user and system, and
+        # 'flatpak info' without a selector only sees the user one. --show-metadata is the raw
+        # manifest, --show-permissions is the merge with all overrides and hides names an override
+        # already set to none, so a later override reset would bring those names back.
+        flatpak list --app --columns=installation,ref | sort -u | while IFS=$'\t' read -r inst ref; do
+            [ -n "${ref}" ] || continue
+            case "${inst}" in
+                user) sel=(--user) ;;
+                system) sel=(--system) ;;
+                "system ("*")") inst=${inst#"system ("}; sel=("--installation=${inst%")"}") ;;
+                *) echo "error: unknown flatpak installation: ${inst}" >&2; exit 1 ;;
+            esac
+            flatpak info "${sel[@]}" --show-metadata "${ref}" < /dev/null
+            echo
+            flatpak info "${sel[@]}" --show-permissions "${ref}" < /dev/null
         done | awk '
             /^[[:space:]]*(#|$)/ { next }
             /^\[/ { sec = $0; next }
