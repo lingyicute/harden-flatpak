@@ -81,39 +81,38 @@ echo ""
         echo "	Rejecting ${i}..."
         ${kCommand} --nofilesystem="${i}"
     done
-    echo "NOTE: The next 2 lockdowns are NOT complete and only cover a list of known names, this can be expanded at any time"
+    echo "NOTE: The next lockdown is NOT complete and only covers a list of known names, this can be expanded at any time"
     echo "-- Session Bus Name Access --"
     for i in "${kKnownSessionBusNames[@]}"; do
         echo "	Rejecting ${i}..."
         ${kCommand} --no-talk-name="${i}"
     done
 
-    echo "-- System Bus Name Access --"
-    for i in "${kKnownSystemBusNames[@]}"; do
-        echo "	Rejecting ${i}..."
-        ${kCommand} --system-no-talk-name="${i}"
-    done
-
     echo "-- Bus Names And Policies Requested By Installed Apps --"
     echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
-    echo "This also rejects every bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
-    installed_flags=$(
-        # Read every installation separately: the same ref can exist in user and system, and
-        # 'flatpak info' without a selector only sees the user one. --show-metadata is the raw
-        # manifest, --show-permissions is the merge with all overrides and hides names an override
-        # already set to none, so a later override reset would bring those names back.
-        flatpak list --app --columns=installation,ref | sort -u | while IFS=$'\t' read -r inst ref; do
-            [ -n "${ref}" ] || continue
-            case "${inst}" in
-                user) sel=(--user) ;;
-                system) sel=(--system) ;;
-                "system ("*")") inst=${inst#"system ("}; sel=("--installation=${inst%")"}") ;;
-                *) echo "error: unknown flatpak installation: ${inst}" >&2; exit 1 ;;
-            esac
+    echo "This also rejects every session bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
+    echo "System bus names are rejected per app, and only for apps that already declare a system bus policy. A global --system-no-talk-name entry"
+    echo "would make flatpak start a system bus proxy and mount /run/dbus/system_bus_socket in every app, even those that never used the system bus."
+    global_flags=""
+    # Read every installation separately: the same ref can exist in user and system, and
+    # 'flatpak info' without a selector only sees the user one. --show-metadata is the raw
+    # manifest, --show-permissions is the merge with all overrides and hides names an override
+    # already set to none, so a later override reset would bring those names back.
+    installed_apps=$(flatpak list --app --columns=installation,ref | sort -u)
+    while IFS=$'\t' read -r inst ref; do
+        [ -n "${ref}" ] || continue
+        case "${inst}" in
+            user) sel=(--user) ;;
+            system) sel=(--system) ;;
+            "system ("*")") inst=${inst#"system ("}; sel=("--installation=${inst%")"}") ;;
+            *) echo "error: unknown flatpak installation: ${inst}" >&2; exit 1 ;;
+        esac
+        perms=$(
             flatpak info "${sel[@]}" --show-metadata "${ref}" < /dev/null
             echo
             flatpak info "${sel[@]}" --show-permissions "${ref}" < /dev/null
-        done | awk '
+        )
+        app_flags=$(awk '
             /^[[:space:]]*(#|$)/ { next }
             /^\[/ { sec = $0; next }
             (idx = index($0, "=")) > 1 {
@@ -127,8 +126,19 @@ echo ""
                         if (v[i] != "" && v[i] !~ /^!/) print "--remove-policy=" substr(sec, 9, length(sec) - 9) "." k "=" v[i]
                 }
             }
-        ' | sort -u
-    )
+        ' <<< "${perms}" | sort -u)
+        global_flags+=$(grep -v '^--system-no-talk-name=' <<< "${app_flags}" || true)$'\n'
+        system_args=()
+        while IFS= read -r flag; do
+            [ -z "${flag}" ] || system_args+=("${flag}")
+        done < <(grep '^--system-no-talk-name=' <<< "${app_flags}" || true)
+        if [ "${#system_args[@]}" -gt 0 ]; then
+            for i in "${kKnownSystemBusNames[@]}"; do system_args+=("--system-no-talk-name=${i}"); done
+            echo "\tRejecting system bus names for ${ref%%/*}..."
+            ${kCommand} "${system_args[@]}" "${ref%%/*}" < /dev/null
+        fi
+    done <<< "${installed_apps}"
+    installed_flags=$(printf '%s\n' "${global_flags}" | sort -u)
     while IFS= read -r flag; do
         [ -z "${flag}" ] && continue
         echo "	Rejecting ${flag#*=}..."
@@ -152,6 +162,7 @@ echo ""
     done
 
     echo "-- Per-app Overrides (these still win over everything above; inspect: flatpak override --user --show APP_ID) --"
+    echo "Note: apps that got the system bus denies above are listed too."
     ls -A "${FLATPAK_USER_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/flatpak}/overrides" 2>/dev/null | grep -vxF -e global -e com.github.tchx84.Flatseal || echo "	none"
 
     echo "Lockdown complete!"

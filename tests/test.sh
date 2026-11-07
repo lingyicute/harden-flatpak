@@ -15,7 +15,13 @@ echo "$*" >> "$LOG"
 case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
 list) printf 'user\torg.a.App/x86_64/stable\nsystem\torg.a.App/x86_64/stable\nsystem (extra)\torg.b.App/x86_64/stable\n' ;;
-info) [[ "$*" == *--show-metadata* ]] && printf '[Application]\nname=org.a.App\n[Session Bus Policy]\norg.m.Meta=talk\norg.n.None=none\n' || printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n' ;;
+info)
+  if [[ "$*" == *--show-metadata* ]]; then printf '[Application]\nname=org.a.App\n[Session Bus Policy]\norg.m.Meta=talk\norg.n.None=none\n'
+  else
+    printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n'
+    [[ -n "${FAKE_NO_SYSTEM:-}" ]] || printf '[System Bus Policy]\norg.z.W=talk\n'
+    printf '[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n'
+  fi ;;
 ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242 ;;
 documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
 esac
@@ -25,6 +31,7 @@ chmod +x "$tmp/bin/flatpak"; export PATH="$tmp/bin:$PATH"
 
 fail=0
 want() { grep -qxF -- "$1" "$LOG" || { echo "FAIL: missing: $1"; fail=1; }; }
+want_app() { grep -F -- " $2 " "$LOG" | grep -q "^override --user .* $1\$" || { echo "FAIL: missing for $1: $2"; fail=1; }; }
 deny() { ! grep -qxF -- "$1" "$LOG" || { echo "FAIL: unexpected: $1"; fail=1; }; }
 
 : > "$LOG"; bash "$root/lockdown.sh" > /dev/null
@@ -43,8 +50,13 @@ want 'override --user --nodevice=dri'
 want 'override --user --nofilesystem=host:reset'
 want 'override --user --nofilesystem=host-root'
 want 'override --user --no-talk-name=org.freedesktop.UPower'
-want 'override --user --system-no-talk-name=org.bluez.obex'
-want 'override --user --system-no-talk-name=org.freedesktop.PackageKit'
+# system bus names: per app only, never global (a global entry makes flatpak proxy the system bus for every app)
+! grep -qE '^override --user --system-no-talk-name=[^ ]+$' "$LOG" || { echo "FAIL: global --system-no-talk-name written"; fail=1; }
+for a in org.a.App org.b.App; do
+    want_app "$a" '--system-no-talk-name=org.bluez.obex'
+    want_app "$a" '--system-no-talk-name=org.freedesktop.PackageKit'
+    want_app "$a" '--system-no-talk-name=org.z.W'
+done
 want 'override --user --no-talk-name=org.gnome.Mutter.RemoteDesktop'
 want 'override --user --nofilesystem=~/.netrc'
 want 'override --user --nofilesystem=~/.aws'
@@ -85,7 +97,6 @@ want 'override --user --no-talk-name=org.freedesktop.impl.portal.desktop.gnome'
 want 'override --user --no-talk-name=org.x.Y'
 want 'override --user --no-talk-name=org.kde.*'
 deny 'override --user --no-talk-name=# comment'
-want 'override --user --system-no-talk-name=org.z.W'
 want 'override --user --remove-policy=Tracker3.dbus:org.t.M=a:b'
 want 'override --user --remove-policy=Tracker3.dbus:org.t.M=c:d'
 want 'override --user --remove-policy=Tracker3.dbus:org.t.M=k=v'
@@ -96,6 +107,11 @@ want 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore co
 deny 'override --user --socket=wayland'
 deny 'override --user --persist=.'
 deny 'override --user --talk-name=org.gnome.Software com.github.tchx84.Flatseal'
+
+# apps without a system bus policy get no system bus override at all
+: > "$LOG"; FAKE_NO_SYSTEM=1 bash "$root/lockdown.sh" > /dev/null
+! grep -q -- '--system-no-talk-name' "$LOG" || { echo "FAIL: system bus deny written for app without system policy"; fail=1; }
+want 'override --user --no-talk-name=org.x.Y'
 
 # flatpak 1.16 rejects host-root: must not be sent
 : > "$LOG"; FAKE_FLATPAK_VERSION=1.16.0 bash "$root/lockdown.sh" > /dev/null
