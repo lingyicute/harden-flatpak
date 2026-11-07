@@ -628,7 +628,7 @@
 
   var SEEDS=[{n:'青绿',h:190},{n:'蓝',h:262},{n:'紫',h:305},{n:'粉',h:350},{n:'橙',h:55},{n:'绿',h:145}];
   var state={h:190,mode:'auto'};
-  try{var sv=JSON.parse(localStorage.getItem('hf-theme')||'null'); if(sv&&typeof sv.h==='number'){state=sv}}catch(e){}
+  try{var sv=JSON.parse(localStorage.getItem('hf-theme')||'null'); if(sv&&typeof sv.h==='number'){state={h:sv.h,mode:['auto','light','dark'].indexOf(sv.mode)>=0?sv.mode:'auto'}}}catch(e){}
 
   var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function isDark(){return state.mode==='dark'||(state.mode==='auto'&&mq&&mq.matches)}
@@ -656,7 +656,7 @@
   var pop=$('#pop'), popBtn=$('#popBtn');
   popBtn.addEventListener('click',function(e){e.stopPropagation();var o=pop.classList.toggle('open');popBtn.setAttribute('aria-expanded',o)});
   document.addEventListener('click',function(e){if(!pop.contains(e.target)){pop.classList.remove('open');popBtn.setAttribute('aria-expanded','false')}});
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'){pop.classList.remove('open')}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){pop.classList.remove('open');popBtn.setAttribute('aria-expanded','false')}});
 
   /* ================= ripple ================= */
   document.addEventListener('pointerdown',function(e){
