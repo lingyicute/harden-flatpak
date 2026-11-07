@@ -31,8 +31,10 @@ echo ""
 echo "正在执行清理操作..."
 
 # 杀掉所有实例并等它们真正退出；还有实例在跑就不删数据（以防它们把数据写回来）
+# flatpak ps 只在 .ref 创建满 3 秒后才回收已退出的实例（st_mtime + 3 < now，最长约 4 秒），
+# 所以刚启动的实例被杀后仍会被列出一阵子，这里至少要等 5 秒。
 stop_instances() {
-    for _ in $(seq 30); do
+    for _ in $(seq 50); do
         instances=$(LC_ALL=C flatpak ps --columns=instance)
         [ -z "$instances" ] && return 0
         printf '%s\n' "$instances" | xargs -rn1 flatpak kill || true

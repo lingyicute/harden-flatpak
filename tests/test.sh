@@ -22,7 +22,8 @@ info)
     [[ -n "${FAKE_NO_SYSTEM:-}" ]] || printf '[System Bus Policy]\norg.z.W=talk\n'
     printf '[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n'
   fi ;;
-ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242 ;;
+ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242
+    [[ -n "${FAKE_PS_UNTIL:-}" && $(date +%s) -lt $FAKE_PS_UNTIL ]] && echo 4343 ;;
 documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
 esac
 exit 0
@@ -143,6 +144,9 @@ want 'document-unexport --doc-id doc1'
 [ ! -e "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp" ] || { echo "FAIL: .flatpak tmp not wiped"; fail=1; }
 [ ! -e "$XDG_RUNTIME_DIR/.flatpak/org.a.App/xdg-run" ] || { echo "FAIL: .flatpak xdg-run not wiped"; fail=1; }
 [ -f "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" ] || { echo "FAIL: .flatpak .ref lockfile removed"; fail=1; }
+
+# flatpak ps lists an already dead instance for up to 4s after its start: cleanup must wait it out
+: > "$LOG"; FAKE_PS_UNTIL=$(( $(date +%s) + 4 )) bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: cleanup gave up on a dead instance still listed by flatpak ps"; fail=1; }
 
 # cleanup must not follow a symlinked $XDG_RUNTIME_DIR/app
 mkdir -p "$tmp/outside"; touch "$tmp/outside/keep"
