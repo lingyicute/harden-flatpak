@@ -14,8 +14,8 @@ echo "$*" >> "$LOG"
 [[ -n "${FAKE_FAIL_ON:-}" && " $* " == *" $FAKE_FAIL_ON "* ]] && exit 1
 case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
-list) printf 'org.a.App\norg.b.App\n' ;;
-info) printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n' ;;
+list) printf 'user\torg.a.App/x86_64/stable\nsystem\torg.a.App/x86_64/stable\nsystem (extra)\torg.b.App/x86_64/stable\n' ;;
+info) [[ "$*" == *--show-metadata* ]] && printf '[Application]\nname=org.a.App\n[Session Bus Policy]\norg.m.Meta=talk\norg.n.None=none\n' || printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n[System Bus Policy]\norg.z.W=talk\n[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n' ;;
 ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242 ;;
 documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
 esac
@@ -29,8 +29,15 @@ deny() { ! grep -qxF -- "$1" "$LOG" || { echo "FAIL: unexpected: $1"; fail=1; };
 
 : > "$LOG"; bash "$root/lockdown.sh" > /dev/null
 want 'override --user --reset'
-want 'list --app --columns=ref'
-want 'info --show-permissions org.a.App'
+want 'list --app --columns=installation,ref'
+want 'info --user --show-metadata org.a.App/x86_64/stable'
+want 'info --user --show-permissions org.a.App/x86_64/stable'
+want 'info --system --show-metadata org.a.App/x86_64/stable'
+want 'info --system --show-permissions org.a.App/x86_64/stable'
+want 'info --installation=extra --show-metadata org.b.App/x86_64/stable'
+want 'info --installation=extra --show-permissions org.b.App/x86_64/stable'
+want 'override --user --no-talk-name=org.m.Meta'
+deny 'override --user --no-talk-name=org.n.None'
 want 'override --user --nosocket=wayland'
 want 'override --user --nodevice=dri'
 want 'override --user --nofilesystem=host:reset'
@@ -107,7 +114,7 @@ want 'override --user --nofilesystem=host:reset'
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
 deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
-: > "$LOG"; ! FAKE_FAIL_ON='org.a.App' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed info in subshell ignored"; fail=1; }
+: > "$LOG"; ! FAKE_FAIL_ON='org.b.App/x86_64/stable' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed info in subshell ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
 
 # cleanup must refuse to delete data if an instance is still running
