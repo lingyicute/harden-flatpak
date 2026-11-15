@@ -73,14 +73,14 @@ if [ -d "$app_data_dir" ]; then
     find -H "$app_data_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 fi
 
-# 同一登录会话内的运行期应用状态 $XDG_RUNTIME_DIR/app/* 及 $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run}
+# 同一登录会话内的运行期应用状态 $XDG_RUNTIME_DIR/app/* 及 $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run,dev-shm}
 if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/app" ] && [ ! -L "$XDG_RUNTIME_DIR/app" ]; then
     find -P "$XDG_RUNTIME_DIR/app" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
     find -P "$XDG_RUNTIME_DIR/app" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 fi
 if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/.flatpak" ] && [ ! -L "$XDG_RUNTIME_DIR/.flatpak" ]; then
     find -P "$XDG_RUNTIME_DIR/.flatpak" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
-    find -P "$XDG_RUNTIME_DIR/.flatpak" -mindepth 2 -maxdepth 2 \( -name tmp -o -name xdg-run \) -exec rm -rf -- {} +
+    find -P "$XDG_RUNTIME_DIR/.flatpak" -mindepth 2 -maxdepth 2 \( -name tmp -o -name xdg-run -o -name dev-shm \) -exec rm -rf -- {} +
 fi
 
 # 以 per-app-dev-shm 运行过的应用，其 /dev/shm 是宿主机上的 /dev/shm/flatpak-$APP_ID-XXXXXX（内存中，应用可写）。

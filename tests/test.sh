@@ -7,6 +7,7 @@ export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/run" LOG="$tmp/calls.log" CLEANUP_
 mkdir -p "$HOME/.var/app/org.a.App/data/locked" "$XDG_RUNTIME_DIR/app/org.a.App/locked" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp/locked" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/xdg-run" "$tmp/bin"
 touch "$HOME/.var/app/org.a.App/data/x" "$HOME/.var/app/org.a.App/data/locked/z" "$XDG_RUNTIME_DIR/app/org.a.App/y" "$XDG_RUNTIME_DIR/app/org.a.App/locked/w" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp/locked/t" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/xdg-run/s"
 mkdir -p "$tmp/shm/flatpak-org.a.App-AbCdEf/locked" "$tmp/shm/other-dir" "$tmp/shm-target"; touch "$tmp/shm/flatpak-org.a.App-AbCdEf/v" "$tmp/shm/flatpak-org.a.App-AbCdEf/locked/u" "$tmp/shm/other-dir/keep" "$tmp/shm-target/keep"; ln -s "$tmp/shm-target" "$tmp/shm/flatpak-link"
+ln -s "$tmp/shm/flatpak-org.a.App-AbCdEf" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/dev-shm"
 chmod 000 "$tmp/shm/flatpak-org.a.App-AbCdEf/locked" "$HOME/.var/app/org.a.App/data/locked" "$XDG_RUNTIME_DIR/app/org.a.App/locked" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp/locked"
 
 cat > "$tmp/bin/flatpak" <<'EOS'
@@ -153,13 +154,14 @@ deny 'override --user --reset com.github.tchx84.Flatseal'
 : > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }
 [ -f "$HOME/.var/app/org.a.App/data/x" ] || { echo "FAIL: data deleted while instance running"; fail=1; }
 
-# cleanup must wipe data including chmod 000 directories and per-app runtime tmp/xdg-run
+# cleanup must wipe data including chmod 000 directories and per-app runtime tmp/xdg-run/dev-shm
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
 want 'document-unexport --doc-id doc1'
 [ -z "$(ls -A "$HOME/.var/app")" ] || { echo "FAIL: ~/.var/app not empty"; fail=1; }
 [ -z "$(ls -A "$XDG_RUNTIME_DIR/app")" ] || { echo "FAIL: runtime app dir not empty"; fail=1; }
 [ ! -e "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp" ] || { echo "FAIL: .flatpak tmp not wiped"; fail=1; }
 [ ! -e "$XDG_RUNTIME_DIR/.flatpak/org.a.App/xdg-run" ] || { echo "FAIL: .flatpak xdg-run not wiped"; fail=1; }
+[ ! -L "$XDG_RUNTIME_DIR/.flatpak/org.a.App/dev-shm" ] || { echo "FAIL: .flatpak dev-shm symlink not wiped"; fail=1; }
 [ ! -e "$tmp/shm/flatpak-org.a.App-AbCdEf" ] || { echo "FAIL: per-app dev-shm not wiped"; fail=1; }
 [ -f "$tmp/shm/other-dir/keep" ] && [ -f "$tmp/shm-target/keep" ] || { echo "FAIL: cleanup touched something outside flatpak-* dirs"; fail=1; }
 [ -f "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" ] || { echo "FAIL: .flatpak .ref lockfile removed"; fail=1; }
