@@ -23,8 +23,18 @@ info)
     [[ -n "${FAKE_NO_SYSTEM:-}" ]] || printf '[System Bus Policy]\norg.z.W=talk\n'
     printf '[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n'
   fi ;;
-ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && echo 4242
-    [[ -n "${FAKE_PS_UNTIL:-}" && $(date +%s) -lt $FAKE_PS_UNTIL ]] && echo 4343 ;;
+ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && printf '4242\t99\n'
+    [[ -n "${FAKE_PS_UNTIL:-}" && $(date +%s) -lt $FAKE_PS_UNTIL ]] && printf '4343\t99\n'
+    if [[ -n "${FAKE_PS_STARTUP:-}" && ! -f "$FAKE_PS_STARTUP.dead" ]]; then
+      if [[ ! -f "$FAKE_PS_STARTUP.s1" ]]; then : > "$FAKE_PS_STARTUP.s1"; printf '4444\t0\n'
+      else printf '4444\t88\n'; fi
+    fi ;;
+kill)
+    if [[ -n "${FAKE_PS_STARTUP:-}" && "${2:-}" == "4444" ]]; then
+      if [[ ! -f "$FAKE_PS_STARTUP.k1" ]]; then : > "$FAKE_PS_STARTUP.k1"; exit 0; fi
+      if [[ ! -f "$FAKE_PS_STARTUP.k2" ]]; then : > "$FAKE_PS_STARTUP.k2"; exit 1; fi
+      : > "$FAKE_PS_STARTUP.dead"
+    fi ;;
 documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
 esac
 exit 0
@@ -154,8 +164,13 @@ want 'document-unexport --doc-id doc1'
 [ -f "$tmp/shm/other-dir/keep" ] && [ -f "$tmp/shm-target/keep" ] || { echo "FAIL: cleanup touched something outside flatpak-* dirs"; fail=1; }
 [ -f "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" ] || { echo "FAIL: .flatpak .ref lockfile removed"; fail=1; }
 
-# flatpak ps lists an already dead instance for up to 4s after its start: cleanup must wait it out
-: > "$LOG"; FAKE_PS_UNTIL=$(( $(date +%s) + 4 )) bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: cleanup gave up on a dead instance still listed by flatpak ps"; fail=1; }
+# flatpak ps lists an already dead instance for up to 4s after its start: cleanup must wait it out without re-killing
+: > "$LOG"; FAKE_PS_UNTIL=$(( $(date +%s) + 4 )) sh "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: cleanup gave up on a dead instance still listed by flatpak ps"; fail=1; }
+[ "$(grep -cxF 'kill 4343' "$LOG")" -eq 1 ] || { echo "FAIL: dead instance killed more than once"; fail=1; }
+
+# cleanup must retry flatpak kill when child-pid was 0 during startup or when flatpak kill fails
+: > "$LOG"; FAKE_PS_STARTUP="$tmp/startup" sh "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: cleanup did not retry pre-bwrap or failed kill"; fail=1; }
+[ "$(grep -cxF 'kill 4444' "$LOG")" -eq 3 ] || { echo "FAIL: expected 3 kill attempts for starting instance"; fail=1; }
 
 # cleanup must not follow a symlinked $XDG_RUNTIME_DIR/app
 mkdir -p "$tmp/outside"; touch "$tmp/outside/keep"

@@ -35,16 +35,25 @@ echo "正在执行清理操作..."
 # 所以刚启动的实例被杀后仍会被列出一阵子，这里至少要等 5 秒。
 stop_instances() {
     killed=""
-    for _ in $(seq 50); do
-        instances=$(LC_ALL=C flatpak ps --columns=instance)
+    tab=$(printf '\t')
+    i=0
+    while [ "$i" -lt 50 ]; do
+        instances=$(LC_ALL=C flatpak ps --columns=instance,child-pid)
         [ -z "$instances" ] && return 0
-        for inst in $instances; do
+        while IFS="$tab " read -r inst cpid _; do
+            [ -n "$inst" ] || continue
             case " $killed " in
-                *" $inst "*) ;;
-                *) flatpak kill "$inst" 2>/dev/null || true; killed="$killed $inst" ;;
+                *" $inst "*) continue ;;
             esac
-        done
+            # child-pid 为 0 时 bwrap 尚未写完 bwrapinfo.json，flatpak kill 重试 0.4s 后可能未发信号便返回 0
+            if flatpak kill "$inst" 2>/dev/null && [ "${cpid:-1}" != 0 ]; then
+                killed="$killed $inst"
+            fi
+        done <<EOF
+$instances
+EOF
         sleep 0.1
+        i=$((i + 1))
     done
     instances=$(LC_ALL=C flatpak ps --columns=instance)
     [ -z "$instances" ] && return 0
