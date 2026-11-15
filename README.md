@@ -1,32 +1,32 @@
 # harden-flatpak
 
-Two scripts to harden the flatpak.
+Two scripts to harden Flatpak.
 
-lockdown script configures Flatpak to automatically reject most permissions, which may break functionality for many Flatpaks. It provides options to proceed with the configuration and grants specific permissions as needed.
+`lockdown.sh` configures Flatpak to reject most permissions by default, which breaks many Flatpaks until you grant back what each app needs, and re-grants Flatseal the minimum access required to manage those overrides.
 
 ```console
 $ bash lockdown.sh   # default-deny user-level overrides; re-run after installing apps
 $ bash cleanup.sh    # kill Flatpaks, unexport documents, wipe ~/.var/app/*, $XDG_RUNTIME_DIR/app/*, $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run,dev-shm} and /dev/shm/flatpak-*
 ```
 
-Both scripts are deliberately tiny so that they can be audited at a glance. 
+Both scripts are deliberately tiny so that they can be audited at a glance.
 
 > [!important]
-> 
+>
 > Scripts never ask for confirmation: running the script is the confirmation. `cleanup.sh` deletes data immediately.
 
 ## What `lockdown.sh` does
 
-- Starts by resetting the user-level global override and Flatseal's override (`flatpak override --user --reset`, no confirmation, no backup), so the result does not depend on earlier runs. Per-app overrides of other apps are left alone.
+- Resets the user-level global override and Flatseal's override (`flatpak override --user --reset`, no confirmation, no backup), so the result does not depend on earlier runs. Existing per-app grants of other apps are preserved (apps that declare a system bus policy only get per-app system-bus denies for names you have not explicitly allowed).
 - Denies every Flatpak permission type (`--unshare`, `--nosocket`, `--nodevice`, `--disallow`, `--nousb=all`, `--remove-policy`), including `wayland` and `dri`, for all apps. Nothing is persisted (`--persist` is never granted).
-- Denies all filesystem access (`host:reset`, `home`, `host`, `host-os`, `host-etc`) plus a list of sandbox-escape and credential paths (`~/.config/systemd`, `~/.local/share/dbus-1/services`, `~/.ssh`, `~/.gnupg`, `~/.password-store`, `xdg-data/flatpak/overrides`, editor/package-manager configs, browser profiles, ...). `host:reset` already drops every grant from manifests and system overrides, so the entries only matter for directories: an existing directory in the list is masked with a tmpfs if you later grant `--filesystem=home` or `host` (or a parent directory) to one app. Files, sockets and `/mnt`, `/media`, `/run/media`, `/home` cannot be masked that way and are not listed (see Limits).
+- Denies all filesystem access (`host:reset`, `home`, `host`, `host-os`, `host-etc`, plus `host-root` on Flatpak >= 1.17) plus a list of sandbox-escape and credential paths (`~/.config/systemd`, `~/.local/share/dbus-1/services`, `~/.ssh`, `~/.gnupg`, `~/.password-store`, `xdg-data/flatpak/overrides`, editor/package-manager configs, browser profiles, ...). `host:reset` already drops every grant from manifests and system overrides, so the entries only matter for directories: an existing directory in the list is masked with a tmpfs if you later grant `--filesystem=home` or `host` (or a parent directory) to one app. Files, sockets and `/mnt`, `/media`, `/run/media`, `/home` cannot be masked that way and are not listed (see Limits).
 - Denies a static list of session D-Bus names, including the concrete portal backends (`org.freedesktop.impl.portal.desktop.*`, `...Secret`, `...PermissionStore`) and the Flatpak/systemd escape names. The static list of system bus names is denied per app, only for installed apps that already declare a system bus policy: one global `--system-no-talk-name` entry would make Flatpak start a system bus proxy for every app.
 - Reads the manifest and the merged permissions (`flatpak info --show-metadata` and `--show-permissions`) of the apps installed right now, in every installation, and denies every session/system bus name and subsystem policy they declare.
 - Re-grants only what Flatseal needs to work (see [docs/flatseal-grants.md](docs/flatseal-grants.md)).
 
 `--no-talk-name=foo.*` is **not** a glob in Flatpak. It only cancels an entry that is literally named `foo.*`. So the static list can never be complete; re-run `lockdown.sh` after installing apps.
 
-To undo: `flatpak override --user --reset` (and `flatpak override --user --reset com.github.tchx84.Flatseal`). To inspect: `flatpak override --user --show`.
+To undo: `flatpak override --user --reset` and `flatpak override --user --reset com.github.tchx84.Flatseal` (plus `flatpak override --user --reset APP_ID` for any app that received per-app system-bus denies, listed at the end of the run). To inspect: `flatpak override --user --show`.
 
 ## Limits of Flatpak under a high-threat model
 
