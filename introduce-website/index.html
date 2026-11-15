@@ -56,8 +56,6 @@
   .btn-filled:hover{box-shadow:0 1px 3px rgba(0,0,0,.3),0 4px 8px 3px rgba(0,0,0,.12)}
   .btn-tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
   .btn-outlined{border:1px solid var(--outline);color:var(--primary)}
-  .btn-text{color:var(--primary);padding:0 16px}
-  .btn-error{background:var(--error-container);color:var(--on-error-container)}
   .btn-sm{height:40px;padding:0 18px;font-size:.85rem}
   .gh-label{display:inline}
   .ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.18;transform:scale(0);animation:rip .6s var(--ease) forwards;pointer-events:none;z-index:-1}
@@ -173,7 +171,7 @@
   .term-tabs button{height:34px;padding:0 14px;border-radius:10px;font-family:var(--mono);font-size:.78rem;color:#9db3ae;border:1px solid #2b3a37;transition:all .2s}
   .term-tabs button[aria-pressed="true"]{background:#2b4a45;color:#e6fffa;border-color:transparent}
   .term pre{font-family:var(--mono);font-size:.82rem;line-height:1.75;padding:18px 20px 22px;min-height:290px;white-space:pre-wrap;word-break:break-word;flex:1}
-  .term .p{color:#7fd6c8}.term .ok{color:#8fe3a6}.term .wn{color:#ffb77d}.term .dm{color:#7d918d}
+  .term .p{color:#7fd6c8}.term .ok{color:#8fe3a6}.term .dm{color:#7d918d}
   .cursor{display:inline-block;width:8px;height:1em;background:#7fd6c8;vertical-align:-2px;animation:blink 1s steps(2) infinite}
   @keyframes blink{50%{opacity:0}}
   .note{font-size:.78rem;color:var(--on-surface-variant);margin-top:14px;opacity:.9}
@@ -312,7 +310,6 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></symbol>
     <symbol id="i-warn" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></symbol>
     <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></symbol>
     <symbol id="i-expand" viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
@@ -428,7 +425,7 @@
         <article class="card c-e t-neutral rv">
           <div class="ico"><svg class="i"><use href="#i-refresh"/></svg></div>
           <h3>可撤销，可测试</h3>
-          <p>一条命令回滚：<code>flatpak override --user --reset</code>。<code>tests/test.sh</code> 用伪造的 <code>flatpak</code> 校验生成的命令，不触碰真实系统。</p>
+          <p>使用 <code>flatpak override --user --reset</code>（以及重置 Flatseal 与被写入系统总线拒绝的应用）即可回滚。<code>tests/test.sh</code> 用伪造的 <code>flatpak</code> 校验生成的命令，不触碰真实系统。</p>
         </article>
         <article class="card c-f rv" style="background:var(--sc-low);display:grid;gap:20px;align-items:center" id="flatseal">
           <div>
@@ -590,8 +587,7 @@
   var ok = window.CSS && CSS.supports && CSS.supports('color','oklch(0% 0 0)');
   function L(t){ // tone(0-100) -> approx OKLab lightness
     if(t<=0) return 0; if(t>=100) return 1;
-    var y = t>8 ? Math.pow((t+16)/116,3) : t/903.3;
-    return Math.cbrt(y);
+    return t>8 ? (t+16)/116 : Math.pow(t/903.3,1/3);
   }
   function c(h,ch,t){
     var l=L(t);
@@ -629,9 +625,10 @@
 
   var SEEDS=[{n:'青绿',h:190},{n:'蓝',h:262},{n:'紫',h:305},{n:'粉',h:350},{n:'橙',h:55},{n:'绿',h:145}];
   var state={h:190,mode:'auto'};
-  try{var sv=JSON.parse(localStorage.getItem('hf-theme')||'null'); if(sv&&typeof sv.h==='number'){state={h:sv.h,mode:['auto','light','dark'].indexOf(sv.mode)>=0?sv.mode:'auto'}}}catch(e){}
+  try{var sv=JSON.parse(localStorage.getItem('hf-theme')||'null'); if(sv&&typeof sv.h==='number'&&isFinite(sv.h)){state={h:((sv.h%360)+360)%360,mode:['auto','light','dark'].indexOf(sv.mode)>=0?sv.mode:'auto'}}}catch(e){}
 
   var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  var rmq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   function isDark(){return state.mode==='dark'||(state.mode==='auto'&&mq&&mq.matches)}
   function apply(){
     var d=isDark(), s=scheme(state.h,d);
@@ -650,7 +647,7 @@
     seedsEl.appendChild(b);
   });
   $$('#modes button').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.m;apply()})});
-  if(mq&&mq.addEventListener) mq.addEventListener('change',apply);
+  if(mq){if(mq.addEventListener)mq.addEventListener('change',apply);else if(mq.addListener)mq.addListener(apply)}
   apply();
 
   /* popover */
@@ -668,7 +665,8 @@
 
   /* ================= ripple ================= */
   document.addEventListener('pointerdown',function(e){
-    var el=e.target.closest('.btn,.icon-btn,.cmd button'); if(!el) return;
+    if(rmq&&rmq.matches) return;
+    var el=e.target&&e.target.closest?e.target.closest('.btn,.icon-btn,.cmd button'):null; if(!el) return;
     var r=el.getBoundingClientRect(), s=Math.max(r.width,r.height)*2;
     var sp=document.createElement('span'); sp.className='ripple';
     sp.style.cssText='width:'+s+'px;height:'+s+'px;left:'+(e.clientX-r.left-s/2)+'px;top:'+(e.clientY-r.top-s/2)+'px';
@@ -697,11 +695,11 @@
   $$('[data-copy]').forEach(function(b){
     b.addEventListener('click',function(){
       var txt=b.dataset.copy;
-      var done=function(){toast('已复制到剪贴板');var u=b.querySelector('use');u.setAttribute('href','#i-check');setTimeout(function(){u.setAttribute('href','#i-copy')},1500)};
+      var done=function(){toast('已复制到剪贴板');var u=b.querySelector('use');u.setAttribute('href','#i-check');clearTimeout(b._t);b._t=setTimeout(function(){u.setAttribute('href','#i-copy')},1500)};
       if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(done,fallback)}else fallback();
       function fallback(){
         var ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();
-        try{document.execCommand('copy');done()}catch(e){toast('复制失败，请手动复制')}ta.remove();
+        try{if(document.execCommand('copy'))done();else toast('复制失败，请手动复制')}catch(e){toast('复制失败，请手动复制')}ta.remove();
       }
     });
   });
@@ -715,13 +713,13 @@
   $('#resetBtn').addEventListener('click',function(){panel.classList.remove('locked')});
 
   /* ================= terminal demo ================= */
-  var out=$('#termOut'), run=0;
+  var out=$('#termOut'), run=0, started=false;
   var SCRIPTS={
     lock:[
       ['p','$ bash lockdown.sh'],
       ['dm','# 示意输出，非脚本原始日志'],
       ['','→ 拒绝全部权限类型 (unshare / nosocket / nodevice / disallow / nousb)'],
-      ['','→ 拒绝文件系统：host:reset home host host-os host-etc'],
+      ['','→ 拒绝文件系统：host:reset home host host-os host-etc host-root'],
       ['','→ 屏蔽已存在的凭据与逃逸目录：~/.ssh ~/.gnupg ~/.password-store …'],
       ['','→ 拒绝静态会话 D-Bus 名单与 portal 后端；系统总线名称按应用逐个拒绝'],
       ['','→ 读取各安装位置已安装应用的清单与合并权限 (flatpak info --show-metadata / --show-permissions)'],
@@ -742,16 +740,17 @@
       ['p','$ flatpak override --user --show'],
       ['dm','# 查看当前用户级 override'],
       ['p','$ ls ~/.local/share/flatpak/overrides'],
-      ['dm','# 检查是否有按应用的 override 覆盖了全局设置'],
+      ['dm','# 检查是否有按应用的 override（含按应用写入的系统总线拒绝）'],
       ['p','$ flatpak override --user --reset'],
       ['p','$ flatpak override --user --reset com.github.tchx84.Flatseal'],
+      ['dm','# 如需一并撤销某个应用的按应用 override：flatpak override --user --reset <APP_ID>'],
       ['ok','✔ 已恢复默认'],
       ['p','$ flatpak run --sandbox <APP_ID>'],
       ['dm','# 一次性沙箱，获得更完整的总线隔离']
     ]
   };
-  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function play(key){
+    started=true;
     var id=++run, lines=SCRIPTS[key]; out.innerHTML=''; out.setAttribute('aria-busy','true');
     var i=0;
     (function next(){
@@ -762,7 +761,7 @@
       if(ln[0])span.className=ln[0];
       out.appendChild(span);
       var txt=ln[1], j=0;
-      if(reduce){span.textContent=txt;out.appendChild(document.createTextNode('\n'));return next()}
+      if(rmq&&rmq.matches){span.textContent=txt;out.appendChild(document.createTextNode('\n'));return next()}
       (function type(){
         if(id!==run) return;
         var step = ln[0]==='p' ? 1 : 4;
@@ -777,9 +776,9 @@
     play(b.dataset.t);
   })});
   // start when visible
-  var started=false, termEl=$('.term');
+  var termEl=$('.term');
   if('IntersectionObserver' in window){
-    new IntersectionObserver(function(es,ob){if(es[0].isIntersecting&&!started){started=true;play('lock');ob.disconnect()}},{threshold:.3}).observe(termEl);
+    new IntersectionObserver(function(es,ob){if(es[0].isIntersecting&&!started){play('lock');ob.disconnect()}},{threshold:.1}).observe(termEl);
   } else play('lock');
 })();
 </script>
