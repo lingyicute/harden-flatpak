@@ -93,7 +93,9 @@ echo ""
     echo "This also rejects every session bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
     echo "System bus names are rejected per app, and only for apps that already declare a system bus policy. A global --system-no-talk-name entry"
     echo "would make flatpak start a system bus proxy and mount /run/dbus/system_bus_socket in every app, even those that never used the system bus."
+    overrides_dir="${FLATPAK_USER_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/flatpak}/overrides"
     global_flags=""
+    declare -A app_system_flags=()
     # Read every installation separately: the same ref can exist in user and system, and
     # 'flatpak info' without a selector only sees the user one. --show-metadata is the raw
     # manifest, --show-permissions is the merge with all overrides and hides names an override
@@ -113,13 +115,15 @@ echo ""
             flatpak info "${sel[@]}" --show-permissions "${ref}" < /dev/null
         )
         app_flags=$(awk '
+            { sub(/\r$/, "") }
             /^[[:space:]]*(#|$)/ { next }
-            /^\[/ { sec = $0; next }
+            /^[[:space:]]*\[/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); sec = $0; next }
             (idx = index($0, "=")) > 1 {
-                k = substr($0, 1, idx - 1)
-                val = substr($0, idx + 1)
-                if (val != "none" && sec == "[Session Bus Policy]") print "--no-talk-name=" k
-                else if (val != "none" && sec == "[System Bus Policy]") print "--system-no-talk-name=" k
+                k = substr($0, 1, idx - 1); sub(/^[[:space:]]+/, "", k); sub(/[[:space:]]+$/, "", k)
+                val = substr($0, idx + 1); sub(/^[[:space:]]+/, "", val); sub(/[[:space:]]+$/, "", val)
+                if (k == "") next
+                if (val != "" && val != "none" && sec == "[Session Bus Policy]") print "--no-talk-name=" k
+                else if (val != "" && val != "none" && sec == "[System Bus Policy]") print "--system-no-talk-name=" k
                 else if (sec ~ /^\[Policy .+\]$/) {
                     n = split(val, v, ";")
                     for (i = 1; i <= n; i++)
@@ -128,16 +132,49 @@ echo ""
             }
         ' <<< "${perms}" | sort -u)
         global_flags+=$(grep -v '^--system-no-talk-name=' <<< "${app_flags}" || true)$'\n'
-        system_args=()
-        while IFS= read -r flag; do
-            [ -z "${flag}" ] || system_args+=("${flag}")
-        done < <(grep '^--system-no-talk-name=' <<< "${app_flags}" || true)
-        if [ "${#system_args[@]}" -gt 0 ]; then
-            for i in "${kKnownSystemBusNames[@]}"; do system_args+=("--system-no-talk-name=${i}"); done
-            echo "	Rejecting system bus names for ${ref%%/*}..."
-            "${kCommand[@]}" "${system_args[@]}" "${ref%%/*}" < /dev/null
+        sys_only=$(grep '^--system-no-talk-name=' <<< "${app_flags}" || true)
+        if [ -n "${sys_only}" ]; then
+            app_id="${ref%%/*}"
+            app_system_flags["${app_id}"]+="${sys_only}"$'\n'
         fi
     done <<< "${installed_apps}"
+    flatseal_system_args=()
+    if [ "${#app_system_flags[@]}" -gt 0 ]; then
+        while IFS= read -r app_id; do
+            [ -n "${app_id}" ] || continue
+            allowed_flags=""
+            if [ "${app_id}" != "com.github.tchx84.Flatseal" ] && [ -f "${overrides_dir}/${app_id}" ]; then
+                allowed_flags=$(awk '
+                    { sub(/\r$/, "") }
+                    /^[[:space:]]*(#|$)/ { next }
+                    /^[[:space:]]*\[/ { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); sec = $0; next }
+                    sec == "[System Bus Policy]" && (idx = index($0, "=")) > 1 {
+                        k = substr($0, 1, idx - 1); sub(/^[[:space:]]+/, "", k); sub(/[[:space:]]+$/, "", k)
+                        val = substr($0, idx + 1); sub(/^[[:space:]]+/, "", val); sub(/[[:space:]]+$/, "", val)
+                        if (k != "" && val != "" && val != "none") print "--system-no-talk-name=" k
+                    }
+                ' "${overrides_dir}/${app_id}")
+            fi
+            merged_sys=$(
+                printf '%s\n' "${app_system_flags["${app_id}"]}"
+                printf -- '--system-no-talk-name=%s\n' "${kKnownSystemBusNames[@]}"
+            )
+            system_args=()
+            while IFS= read -r flag; do
+                [ -z "${flag}" ] && continue
+                if [ -n "${allowed_flags}" ] && grep -qxF -- "${flag}" <<< "${allowed_flags}"; then
+                    continue
+                fi
+                system_args+=("${flag}")
+            done < <(sort -u <<< "${merged_sys}")
+            if [ "${app_id}" = "com.github.tchx84.Flatseal" ]; then
+                flatseal_system_args=("${system_args[@]}")
+            elif [ "${#system_args[@]}" -gt 0 ]; then
+                echo "	Rejecting system bus names for ${app_id}..."
+                "${kCommand[@]}" "${system_args[@]}" "${app_id}" < /dev/null
+            fi
+        done < <(printf '%s\n' "${!app_system_flags[@]}" | sort)
+    fi
     installed_flags=$(printf '%s\n' "${global_flags}" | sort -u)
     while IFS= read -r flag; do
         [ -z "${flag}" ] && continue
@@ -148,6 +185,10 @@ echo ""
     echo "-- Granting Flatseal Access --"
     echo "	Resetting Flatseal overrides..."
     "${kCommand[@]}" --reset com.github.tchx84.Flatseal
+    if [ "${#flatseal_system_args[@]}" -gt 0 ]; then
+        echo "	Rejecting system bus names for com.github.tchx84.Flatseal..."
+        "${kCommand[@]}" "${flatseal_system_args[@]}" com.github.tchx84.Flatseal < /dev/null
+    fi
     for i in "${kFlatsealSocketAccess[@]}"; do
         echo "	Granting socket ${i}..."
         "${kCommand[@]}" --socket="${i}" com.github.tchx84.Flatseal
@@ -163,6 +204,6 @@ echo ""
 
     echo "-- Per-app Overrides (these still win over everything above; inspect: flatpak override --user --show APP_ID) --"
     echo "Note: apps that got the system bus denies above are listed too."
-    ls -A "${FLATPAK_USER_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/flatpak}/overrides" 2>/dev/null | grep -vxF -e global -e com.github.tchx84.Flatseal || echo "	none"
+    ls -A "${overrides_dir}" 2>/dev/null | grep -vxF -e global -e com.github.tchx84.Flatseal || echo "	none"
 
     echo "Lockdown complete!"

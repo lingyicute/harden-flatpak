@@ -16,9 +16,10 @@ echo "$*" >> "$LOG"
 [[ -n "${FAKE_FAIL_ON:-}" && " $* " == *" $FAKE_FAIL_ON "* ]] && exit 1
 case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
-list) printf 'user\torg.a.App/x86_64/stable\nsystem\torg.a.App/x86_64/stable\nsystem (extra)\torg.b.App/x86_64/stable\n' ;;
+list) printf 'user\torg.a.App/x86_64/stable\nsystem\torg.a.App/x86_64/stable\nsystem (extra)\torg.b.App/x86_64/stable\n'
+      [[ -z "${FAKE_LIST_FLATSEAL:-}" ]] || printf 'user\tcom.github.tchx84.Flatseal/x86_64/stable\n' ;;
 info)
-  if [[ "$*" == *--show-metadata* ]]; then printf '[Application]\nname=org.a.App\n[Session Bus Policy]\norg.m.Meta=talk\norg.n.None=none\n'
+  if [[ "$*" == *--show-metadata* ]]; then printf '[Application]\r\nname=org.a.App\r\n[Session Bus Policy] \r\norg.m.Meta=talk\r\norg.c.Crlf = talk\r\norg.n.None = none\r\n'
   else
     printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n'
     [[ -n "${FAKE_NO_SYSTEM:-}" ]] || printf '[System Bus Policy]\norg.z.W=talk\n'
@@ -57,14 +58,16 @@ want 'info --system --show-permissions org.a.App/x86_64/stable'
 want 'info --installation=extra --show-metadata org.b.App/x86_64/stable'
 want 'info --installation=extra --show-permissions org.b.App/x86_64/stable'
 want 'override --user --no-talk-name=org.m.Meta'
+want 'override --user --no-talk-name=org.c.Crlf'
 deny 'override --user --no-talk-name=org.n.None'
 want 'override --user --nosocket=wayland'
 want 'override --user --nodevice=dri'
 want 'override --user --nofilesystem=host:reset'
 want 'override --user --nofilesystem=host-root'
 want 'override --user --no-talk-name=org.freedesktop.UPower'
-# system bus names: per app only, never global (a global entry makes flatpak proxy the system bus for every app)
+# system bus names: per app only, never global, deduplicated across user+system installations
 ! grep -qE '^override --user --system-no-talk-name=[^ ]+$' "$LOG" || { echo "FAIL: global --system-no-talk-name written"; fail=1; }
+[ "$(grep -c '^override --user .* org\.a\.App$' "$LOG")" -eq 1 ] || { echo "FAIL: duplicate system bus override for org.a.App"; fail=1; }
 for a in org.a.App org.b.App; do
     want_app "$a" '--system-no-talk-name=org.bluez.obex'
     want_app "$a" '--system-no-talk-name=org.freedesktop.PackageKit'
@@ -129,6 +132,15 @@ mkdir -p "$HOME/.local/share/flatpak/overrides"; touch "$HOME/.local/share/flatp
 out=$(env -u FLATPAK_USER_DIR -u XDG_DATA_HOME bash "$root/lockdown.sh")
 grep -qxF org.c.App <<< "$out" || { echo "FAIL: per-app override not listed"; fail=1; }
 ! grep -qxF -e global -e com.github.tchx84.Flatseal <<< "$out" || { echo "FAIL: global/Flatseal override listed"; fail=1; }
+
+# user-granted system bus names in per-app overrides survive re-runs; Flatseal denies come after --reset
+printf '[System Bus Policy]\r\norg.bluez = talk\r\norg.freedesktop.PackageKit=none\n' > "$HOME/.local/share/flatpak/overrides/org.a.App"
+: > "$LOG"; env -u FLATPAK_USER_DIR -u XDG_DATA_HOME FAKE_LIST_FLATSEAL=1 bash "$root/lockdown.sh" > /dev/null
+! grep '^override --user .* org\.a\.App$' "$LOG" | grep -qF -- ' --system-no-talk-name=org.bluez ' || { echo "FAIL: user-granted org.bluez overwritten"; fail=1; }
+want_app org.a.App '--system-no-talk-name=org.freedesktop.PackageKit'
+want_app org.a.App '--system-no-talk-name=org.z.W'
+awk '/^override --user --reset com\.github\.tchx84\.Flatseal$/{r=1;next} r&&/^override --user .* com\.github\.tchx84\.Flatseal$/&&/--system-no-talk-name=org\.z\.W/{ok=1} END{exit !ok}' "$LOG" || { echo "FAIL: Flatseal system bus deny missing or wiped by --reset"; fail=1; }
+rm -f "$HOME/.local/share/flatpak/overrides/org.a.App"
 
 # flatpak 1.16 rejects host-root: must not be sent
 : > "$LOG"; FAKE_FLATPAK_VERSION=1.16.0 bash "$root/lockdown.sh" > /dev/null
