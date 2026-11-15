@@ -45,8 +45,13 @@ chmod +x "$tmp/bin/flatpak"; export PATH="$tmp/bin:$PATH"
 
 fail=0
 want() { grep -qxF -- "$1" "$LOG" || { echo "FAIL: missing: $1"; fail=1; }; }
-want_app() { grep -F -- " $2 " "$LOG" | grep -q "^override --user .* $1\$" || { echo "FAIL: missing for $1: $2"; fail=1; }; }
 deny() { ! grep -qxF -- "$1" "$LOG" || { echo "FAIL: unexpected: $1"; fail=1; }; }
+has_global() { awk -v f="$1" '/^override --user --/ && $0 != "override --user --reset" && $NF ~ /^--/ { if (index(" " $0 " ", " " f " ")) ok=1 } END { exit !ok }' "$LOG"; }
+want_global() { has_global "$1" || { echo "FAIL: missing global: $1"; fail=1; }; }
+deny_global() { ! has_global "$1" || { echo "FAIL: unexpected global: $1"; fail=1; }; }
+has_app() { awk -v a="$1" -v f="$2" '/^override --user / && $NF == a { if (index(" " $0 " ", " " f " ")) ok=1 } END { exit !ok }' "$LOG"; }
+want_app() { has_app "$1" "$2" || { echo "FAIL: missing for $1: $2"; fail=1; }; }
+deny_app() { ! has_app "$1" "$2" || { echo "FAIL: unexpected for $1: $2"; fail=1; }; }
 
 : > "$LOG"; bash "$root/lockdown.sh" > /dev/null
 want 'override --user --reset'
@@ -57,75 +62,82 @@ want 'info --system --show-metadata org.a.App/x86_64/stable'
 want 'info --system --show-permissions org.a.App/x86_64/stable'
 want 'info --installation=extra --show-metadata org.b.App/x86_64/stable'
 want 'info --installation=extra --show-permissions org.b.App/x86_64/stable'
-want 'override --user --no-talk-name=org.m.Meta'
-want 'override --user --no-talk-name=org.c.Crlf'
-deny 'override --user --no-talk-name=org.n.None'
-want 'override --user --nosocket=wayland'
-want 'override --user --nodevice=dri'
-want 'override --user --nofilesystem=host:reset'
-want 'override --user --nofilesystem=host-root'
-want 'override --user --no-talk-name=org.freedesktop.UPower'
+# global overrides are batched into a single call after --reset, with host:reset before path masks
+[ "$(awk '/^override --user --/ && $0 != "override --user --reset" && $NF ~ /^--/{c++} END{print c+0}' "$LOG")" -eq 1 ] || { echo "FAIL: global overrides not batched into one call"; fail=1; }
+awk '/^override --user --/ && $0 != "override --user --reset" && $NF ~ /^--/ { a=index(" "$0" "," --nofilesystem=host:reset "); b=index(" "$0" "," --nofilesystem=~/.ssh "); if (a>0 && b>a) ok=1 } END{exit !ok}' "$LOG" || { echo "FAIL: host:reset must precede path masks"; fail=1; }
+want_global '--no-talk-name=org.m.Meta'
+want_global '--no-talk-name=org.c.Crlf'
+deny_global '--no-talk-name=org.n.None'
+want_global '--nosocket=wayland'
+want_global '--nodevice=dri'
+want_global '--nofilesystem=host:reset'
+want_global '--nofilesystem=host-root'
+want_global '--no-talk-name=org.freedesktop.UPower'
 # system bus names: per app only, never global, deduplicated across user+system installations
-! grep -qE '^override --user --system-no-talk-name=[^ ]+$' "$LOG" || { echo "FAIL: global --system-no-talk-name written"; fail=1; }
+! awk '/^override --user --/ && $NF ~ /^--/ && /--system-no-talk-name=/{f=1} END{exit !f}' "$LOG" || { echo "FAIL: global --system-no-talk-name written"; fail=1; }
 [ "$(grep -c '^override --user .* org\.a\.App$' "$LOG")" -eq 1 ] || { echo "FAIL: duplicate system bus override for org.a.App"; fail=1; }
 for a in org.a.App org.b.App; do
     want_app "$a" '--system-no-talk-name=org.bluez.obex'
     want_app "$a" '--system-no-talk-name=org.freedesktop.PackageKit'
     want_app "$a" '--system-no-talk-name=org.z.W'
 done
-want 'override --user --no-talk-name=org.gnome.Mutter.RemoteDesktop'
-want 'override --user --nofilesystem=~/.aws'
-want 'override --user --nofilesystem=~/.config/gh'
-want 'override --user --nofilesystem=xdg-run/systemd'
-want 'override --user --nofilesystem=xdg-run/dbus-1'
-want 'override --user --nofilesystem=xdg-config/hypr'
-want 'override --user --nofilesystem=~/.bashrc.d'
-want 'override --user --nofilesystem=~/.vscode'
-want 'override --user --nofilesystem=~/.config/Code'
-want 'override --user --nofilesystem=xdg-config/Code'
-want 'override --user --nofilesystem=~/.config/VSCodium'
-want 'override --user --nofilesystem=xdg-config/VSCodium'
-want 'override --user --nofilesystem=~/.npm'
-want 'override --user --nofilesystem=~/.yarn'
-want 'override --user --nofilesystem=~/.local/share/pnpm'
-want 'override --user --nofilesystem=xdg-data/pnpm'
-want 'override --user --nofilesystem=~/.m2'
-want 'override --user --nofilesystem=~/.gradle'
-want 'override --user --nofilesystem=~/.config/pip'
-want 'override --user --nofilesystem=xdg-config/pip'
-want 'override --user --nofilesystem=~/.mozilla'
-want 'override --user --nofilesystem=~/.config/google-chrome'
-want 'override --user --nofilesystem=xdg-config/google-chrome'
-want 'override --user --nofilesystem=~/.config/chromium'
-want 'override --user --nofilesystem=xdg-config/chromium'
-want 'override --user --nofilesystem=~/.config/BraveSoftware'
-want 'override --user --nofilesystem=xdg-config/BraveSoftware'
+want_global '--no-talk-name=org.gnome.Mutter.RemoteDesktop'
+want_global '--nofilesystem=~/.aws'
+want_global '--nofilesystem=~/.config/gh'
+want_global '--nofilesystem=xdg-run/systemd'
+want_global '--nofilesystem=xdg-run/dbus-1'
+want_global '--nofilesystem=xdg-config/hypr'
+want_global '--nofilesystem=~/.bashrc.d'
+want_global '--nofilesystem=~/.vscode'
+want_global '--nofilesystem=~/.config/Code'
+want_global '--nofilesystem=xdg-config/Code'
+want_global '--nofilesystem=~/.config/VSCodium'
+want_global '--nofilesystem=xdg-config/VSCodium'
+want_global '--nofilesystem=~/.npm'
+want_global '--nofilesystem=~/.yarn'
+want_global '--nofilesystem=~/.local/share/pnpm'
+want_global '--nofilesystem=xdg-data/pnpm'
+want_global '--nofilesystem=~/.m2'
+want_global '--nofilesystem=~/.gradle'
+want_global '--nofilesystem=~/.config/pip'
+want_global '--nofilesystem=xdg-config/pip'
+want_global '--nofilesystem=~/.mozilla'
+want_global '--nofilesystem=~/.config/google-chrome'
+want_global '--nofilesystem=xdg-config/google-chrome'
+want_global '--nofilesystem=~/.config/chromium'
+want_global '--nofilesystem=xdg-config/chromium'
+want_global '--nofilesystem=~/.config/BraveSoftware'
+want_global '--nofilesystem=xdg-config/BraveSoftware'
 # files, sockets and top-level dirs can never be masked: not listed
 for x in '~/.bashrc' '~/.profile' '~/.netrc' xdg-config/kdeglobals xdg-run/bus xdg-run/wayland-0 xdg-run/wayland-1 xdg-run/ssh-agent xdg-run/openssh_agent xdg-run/pipewire-0 /run/docker.sock xdg-run/docker.sock /run/podman /run/libvirt /home /var/home /media /run/media /mnt /var /root /boot; do
-    deny "override --user --nofilesystem=$x"
+    deny_global "--nofilesystem=$x"
 done
-deny 'override --user --nofilesystem=/run'   # reserved by flatpak, always a no-op
-deny 'override --user --nofilesystem=xdg-run/.flatpak'   # collides with flatpak's own runtime-dir symlink
-want 'override --user --nofilesystem=xdg-data/flatpak'
-want 'override --user --no-talk-name=org.freedesktop.impl.portal.desktop.gnome'
-want 'override --user --no-talk-name=org.x.Y'
-want 'override --user --no-talk-name=org.kde.*'
-deny 'override --user --no-talk-name=# comment'
-want 'override --user --remove-policy=Tracker3.dbus:org.t.M=a:b'
-want 'override --user --remove-policy=Tracker3.dbus:org.t.M=c:d'
-want 'override --user --remove-policy=Tracker3.dbus:org.t.M=k=v'
-deny 'override --user --remove-policy=Tracker3.dbus:org.t.M=!e:f'
+deny_global '--nofilesystem=/run'   # reserved by flatpak, always a no-op
+deny_global '--nofilesystem=xdg-run/.flatpak'   # collides with flatpak's own runtime-dir symlink
+want_global '--nofilesystem=xdg-data/flatpak'
+want_global '--no-talk-name=org.freedesktop.impl.portal.desktop.gnome'
+want_global '--no-talk-name=org.x.Y'
+want_global '--no-talk-name=org.kde.*'
+! grep -q -- '--no-talk-name=# comment' "$LOG" || { echo "FAIL: comment parsed as bus name"; fail=1; }
+want_global '--remove-policy=Tracker3.dbus:org.t.M=a:b'
+want_global '--remove-policy=Tracker3.dbus:org.t.M=c:d'
+want_global '--remove-policy=Tracker3.dbus:org.t.M=k=v'
+deny_global '--remove-policy=Tracker3.dbus:org.t.M=!e:f'
 want 'override --user --reset com.github.tchx84.Flatseal'
-want 'override --user --socket=wayland com.github.tchx84.Flatseal'
-want 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
-deny 'override --user --socket=wayland'
-deny 'override --user --persist=.'
-deny 'override --user --talk-name=org.gnome.Software com.github.tchx84.Flatseal'
+[ "$(awk '/^override --user / && $NF == "com.github.tchx84.Flatseal" && $3 != "--reset"{c++} END{print c+0}' "$LOG")" -eq 1 ] || { echo "FAIL: Flatseal grants not batched into one call"; fail=1; }
+want_app com.github.tchx84.Flatseal '--socket=wayland'
+want_app com.github.tchx84.Flatseal '--filesystem=/var/lib/flatpak/app:ro'
+want_app com.github.tchx84.Flatseal '--filesystem=xdg-data/flatpak/app:ro'
+want_app com.github.tchx84.Flatseal '--filesystem=xdg-data/flatpak/overrides:create'
+want_app com.github.tchx84.Flatseal '--talk-name=org.freedesktop.impl.portal.PermissionStore'
+deny_global '--socket=wayland'
+deny_global '--persist=.'
+deny_app com.github.tchx84.Flatseal '--talk-name=org.gnome.Software'
 
 # apps without a system bus policy get no system bus override at all
 : > "$LOG"; FAKE_NO_SYSTEM=1 bash "$root/lockdown.sh" > /dev/null
 ! grep -q -- '--system-no-talk-name' "$LOG" || { echo "FAIL: system bus deny written for app without system policy"; fail=1; }
-want 'override --user --no-talk-name=org.x.Y'
+want_global '--no-talk-name=org.x.Y'
 
 # the per-app override listing skips global and Flatseal but shows other apps
 mkdir -p "$HOME/.local/share/flatpak/overrides"; touch "$HOME/.local/share/flatpak/overrides/"{global,com.github.tchx84.Flatseal,org.c.App}
@@ -136,7 +148,7 @@ grep -qxF org.c.App <<< "$out" || { echo "FAIL: per-app override not listed"; fa
 # user-granted system bus names in per-app overrides survive re-runs; Flatseal denies come after --reset
 printf '[System Bus Policy]\r\norg.bluez = talk\r\norg.freedesktop.PackageKit=none\n' > "$HOME/.local/share/flatpak/overrides/org.a.App"
 : > "$LOG"; env -u FLATPAK_USER_DIR -u XDG_DATA_HOME FAKE_LIST_FLATSEAL=1 bash "$root/lockdown.sh" > /dev/null
-! grep '^override --user .* org\.a\.App$' "$LOG" | grep -qF -- ' --system-no-talk-name=org.bluez ' || { echo "FAIL: user-granted org.bluez overwritten"; fail=1; }
+deny_app org.a.App '--system-no-talk-name=org.bluez'
 want_app org.a.App '--system-no-talk-name=org.freedesktop.PackageKit'
 want_app org.a.App '--system-no-talk-name=org.z.W'
 awk '/^override --user --reset com\.github\.tchx84\.Flatseal$/{r=1;next} r&&/^override --user .* com\.github\.tchx84\.Flatseal$/&&/--system-no-talk-name=org\.z\.W/{ok=1} END{exit !ok}' "$LOG" || { echo "FAIL: Flatseal system bus deny missing or wiped by --reset"; fail=1; }
@@ -144,8 +156,8 @@ rm -f "$HOME/.local/share/flatpak/overrides/org.a.App"
 
 # flatpak 1.16 rejects host-root: must not be sent
 : > "$LOG"; FAKE_FLATPAK_VERSION=1.16.0 bash "$root/lockdown.sh" > /dev/null
-deny 'override --user --nofilesystem=host-root'
-want 'override --user --nofilesystem=host:reset'
+deny_global '--nofilesystem=host-root'
+want_global '--nofilesystem=host:reset'
 
 # flatpak too old or malformed version: abort and change nothing
 : > "$LOG"; ! FAKE_FLATPAK_VERSION=1.14.0 bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: old flatpak accepted"; fail=1; }
@@ -155,12 +167,12 @@ want 'override --user --nofilesystem=host:reset'
 : > "$LOG"; ! FAKE_FLATPAK_VERSION=1.20.abc bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: trailing-alpha flatpak version accepted"; fail=1; }
 ! grep -q '^override' "$LOG" || { echo "FAIL: trailing-alpha flatpak version: override was called"; fail=1; }
 
-# a failing deny or failing info in subshell must abort before any grant (set -e, no partial re-grant)
+# a failing deny must abort before any grant; a failing info must abort before touching any override at all
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
-deny 'override --user --talk-name=org.freedesktop.impl.portal.PermissionStore com.github.tchx84.Flatseal'
+deny_app com.github.tchx84.Flatseal '--talk-name=org.freedesktop.impl.portal.PermissionStore'
 : > "$LOG"; ! FAKE_FAIL_ON='org.b.App/x86_64/stable' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed info in subshell ignored"; fail=1; }
-deny 'override --user --reset com.github.tchx84.Flatseal'
+! grep -q '^override' "$LOG" || { echo "FAIL: failed info: overrides were modified anyway"; fail=1; }
 
 # cleanup must refuse to delete data if an instance is still running
 : > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }

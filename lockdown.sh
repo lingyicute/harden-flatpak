@@ -30,69 +30,7 @@ echo "This will configure flatpak to automatically reject most permissions, incl
 echo "This will also grant Flatseal access to certain permissions to allow them to operate and make reconfiguring much easier."
 echo "NOTE: This will break just about all Flatpaks by default, it is ON YOU to configure them to work with this configuration."
 echo ""
-    echo "-- Resetting Global Overrides --"
-    "${kCommand[@]}" --reset
-
-    echo "-- Share Permissions --"
-    for i in "${kSharePermissions[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --unshare="${i}"
-    done
-
-    echo "-- Socket Permissions --"
-    for i in "${kSocketPermissions[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --nosocket="${i}"
-    done
-
-    echo "-- Device Permissions --"
-    for i in "${kDevicePermissions[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --nodevice="${i}"
-    done
-
-    echo "-- Feature Permissions --"
-    for i in "${kFeaturePermissions[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --disallow="${i}"
-    done
-
-    echo "-- USB Portal Permissions --"
-    echo "	Rejecting all..."
-    "${kCommand[@]}" --nousb=all
-
-    echo "-- Subsystem Policies --"
-    for i in "${kSubsystemPolicies[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --remove-policy="${i}"
-    done
-
-    echo "-- Filesystem Permissions --"
-    for i in "${kFilesystemPermissions[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --nofilesystem="${i}"
-    done
-
-    echo "-- Dangerous Filesystem Permissions --"
-    echo "Note: This is a VERY flawed implementation. host:reset above already drops every grant from manifests and system overrides, so these entries only matter for directories:"
-    echo "Flatpak masks an existing directory with a tmpfs when you later grant --filesystem=home or host (or a parent directory) to one app. Files, sockets and /mnt, /media, /run/media, /home can never be masked, so they are not listed."
-    echo "With --filesystem=home or host an app can still read and write ~/.bashrc, ~/.netrc and similar files. It is not possible to cover all paths, each must be rejected manually."
-    for i in "${kDangerousFilesystemPermissions[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --nofilesystem="${i}"
-    done
-    echo "NOTE: The next lockdown is NOT complete and only covers a list of known names, this can be expanded at any time"
-    echo "-- Session Bus Name Access --"
-    for i in "${kKnownSessionBusNames[@]}"; do
-        echo "	Rejecting ${i}..."
-        "${kCommand[@]}" --no-talk-name="${i}"
-    done
-
-    echo "-- Bus Names And Policies Requested By Installed Apps --"
-    echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
-    echo "This also rejects every session bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
-    echo "System bus names are rejected per app, and only for apps that already declare a system bus policy. A global --system-no-talk-name entry"
-    echo "would make flatpak start a system bus proxy and mount /run/dbus/system_bus_socket in every app, even those that never used the system bus."
+    # Inspect installed apps before modifying any overrides so a failing list/info leaves existing overrides intact.
     overrides_dir="${FLATPAK_USER_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/flatpak}/overrides"
     global_flags=""
     declare -A app_system_flags=()
@@ -138,6 +76,80 @@ echo ""
             app_system_flags["${app_id}"]+="${sys_only}"$'\n'
         fi
     done <<< "${installed_apps}"
+    installed_flags=$(printf '%s\n' "${global_flags}" | sort -u)
+
+    global_args=()
+    echo "-- Share Permissions --"
+    for i in "${kSharePermissions[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--unshare=${i}")
+    done
+
+    echo "-- Socket Permissions --"
+    for i in "${kSocketPermissions[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--nosocket=${i}")
+    done
+
+    echo "-- Device Permissions --"
+    for i in "${kDevicePermissions[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--nodevice=${i}")
+    done
+
+    echo "-- Feature Permissions --"
+    for i in "${kFeaturePermissions[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--disallow=${i}")
+    done
+
+    echo "-- USB Portal Permissions --"
+    echo "	Rejecting all..."
+    global_args+=(--nousb=all)
+
+    echo "-- Subsystem Policies --"
+    for i in "${kSubsystemPolicies[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--remove-policy=${i}")
+    done
+
+    echo "-- Filesystem Permissions --"
+    for i in "${kFilesystemPermissions[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--nofilesystem=${i}")
+    done
+
+    echo "-- Dangerous Filesystem Permissions --"
+    echo "Note: This is a VERY flawed implementation. host:reset above already drops every grant from manifests and system overrides, so these entries only matter for directories:"
+    echo "Flatpak masks an existing directory with a tmpfs when you later grant --filesystem=home or host (or a parent directory) to one app. Files, sockets and /mnt, /media, /run/media, /home can never be masked, so they are not listed."
+    echo "With --filesystem=home or host an app can still read and write ~/.bashrc, ~/.netrc and similar files. It is not possible to cover all paths, each must be rejected manually."
+    for i in "${kDangerousFilesystemPermissions[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--nofilesystem=${i}")
+    done
+
+    echo "NOTE: The next lockdown is NOT complete and only covers a list of known names, this can be expanded at any time"
+    echo "-- Session Bus Name Access --"
+    for i in "${kKnownSessionBusNames[@]}"; do
+        echo "	Rejecting ${i}..."
+        global_args+=("--no-talk-name=${i}")
+    done
+
+    echo "-- Bus Names And Policies Requested By Installed Apps --"
+    echo "Note: --no-talk-name=foo.* only cancels a literal \"foo.*\" entry, it is not a glob, so the lists above can never be complete."
+    echo "This also rejects every session bus name and subsystem policy the apps installed right now ask for. Re-run this script after installing apps."
+    echo "System bus names are rejected per app, and only for apps that already declare a system bus policy. A global --system-no-talk-name entry"
+    echo "would make flatpak start a system bus proxy and mount /run/dbus/system_bus_socket in every app, even those that never used the system bus."
+    while IFS= read -r flag; do
+        [ -z "${flag}" ] && continue
+        echo "	Rejecting ${flag#*=}..."
+        global_args+=("${flag}")
+    done <<< "${installed_flags}"
+
+    echo "-- Resetting And Writing Global Overrides --"
+    "${kCommand[@]}" --reset < /dev/null
+    "${kCommand[@]}" "${global_args[@]}" < /dev/null
+
     flatseal_system_args=()
     if [ "${#app_system_flags[@]}" -gt 0 ]; then
         while IFS= read -r app_id; do
@@ -175,32 +187,27 @@ echo ""
             fi
         done < <(printf '%s\n' "${!app_system_flags[@]}" | sort)
     fi
-    installed_flags=$(printf '%s\n' "${global_flags}" | sort -u)
-    while IFS= read -r flag; do
-        [ -z "${flag}" ] && continue
-        echo "	Rejecting ${flag#*=}..."
-        "${kCommand[@]}" "${flag}" < /dev/null
-    done <<< "${installed_flags}"
 
     echo "-- Granting Flatseal Access --"
     echo "	Resetting Flatseal overrides..."
-    "${kCommand[@]}" --reset com.github.tchx84.Flatseal
+    "${kCommand[@]}" --reset com.github.tchx84.Flatseal < /dev/null
+    flatseal_args=("${flatseal_system_args[@]}")
     if [ "${#flatseal_system_args[@]}" -gt 0 ]; then
         echo "	Rejecting system bus names for com.github.tchx84.Flatseal..."
-        "${kCommand[@]}" "${flatseal_system_args[@]}" com.github.tchx84.Flatseal < /dev/null
     fi
     for i in "${kFlatsealSocketAccess[@]}"; do
         echo "	Granting socket ${i}..."
-        "${kCommand[@]}" --socket="${i}" com.github.tchx84.Flatseal
+        flatseal_args+=("--socket=${i}")
     done
     for i in "${kFlatsealFilesystemAccess[@]}"; do
         echo "	Granting filesystem ${i}..."
-        "${kCommand[@]}" --filesystem="${i}" com.github.tchx84.Flatseal
+        flatseal_args+=("--filesystem=${i}")
     done
     for i in "${kFlatsealNameAccess[@]}"; do
         echo "	Granting ${i}..."
-        "${kCommand[@]}" --talk-name="${i}" com.github.tchx84.Flatseal
+        flatseal_args+=("--talk-name=${i}")
     done
+    "${kCommand[@]}" "${flatseal_args[@]}" com.github.tchx84.Flatseal < /dev/null
 
     echo "-- Per-app Overrides (these still win over everything above; inspect: flatpak override --user --show APP_ID) --"
     echo "Note: apps that got the system bus denies above are listed too."
