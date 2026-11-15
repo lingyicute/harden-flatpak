@@ -8,6 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="mask-icon" href="favicon.svg" color="#00696a">
 <meta name="theme-color" content="#00696a">
+<script>document.documentElement.className+=' js'</script>
 <style>
   :root{
     --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -80,8 +81,8 @@
 
   /* theme popover */
   .pop{position:relative}
-  .pop-card{position:absolute;right:0;top:56px;width:270px;background:var(--sc-high);border-radius:20px;padding:16px;box-shadow:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.3);opacity:0;transform:translateY(-8px) scale(.96);transform-origin:top right;pointer-events:none;transition:opacity .2s var(--ease),transform .25s var(--ease-emph)}
-  .pop.open .pop-card{opacity:1;transform:none;pointer-events:auto}
+  .pop-card{position:absolute;right:0;top:56px;width:270px;background:var(--sc-high);border-radius:20px;padding:16px;box-shadow:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.3);opacity:0;visibility:hidden;transform:translateY(-8px) scale(.96);transform-origin:top right;pointer-events:none;transition:opacity .2s var(--ease),transform .25s var(--ease-emph),visibility 0s linear .25s}
+  .pop.open .pop-card{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .2s var(--ease),transform .25s var(--ease-emph),visibility 0s}
   .pop-card h4{font-size:.8rem;font-weight:600;color:var(--on-surface-variant);margin:0 0 10px;letter-spacing:.04em}
   .seeds{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
   .seed{min-height:33px;aspect-ratio:1;border-radius:50%;border:2px solid transparent;position:relative;transition:border-radius .25s var(--ease-emph),transform .2s}
@@ -231,9 +232,9 @@
   .snack{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120px);background:var(--on-surface);color:var(--surface);padding:14px 24px;border-radius:14px;font-size:.9rem;z-index:100;transition:transform .35s var(--ease-emph);box-shadow:0 4px 12px rgba(0,0,0,.3)}
   .snack.show{transform:translate(-50%,0)}
 
-  /* reveal */
-  .rv{opacity:0;transform:translateY(24px);transition:opacity .7s var(--ease),transform .7s var(--ease-emph)}
-  .rv.in{opacity:1;transform:none}
+  /* reveal (progressive enhancement: visible without JS) */
+  .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s var(--ease),transform .7s var(--ease-emph)}
+  .js .rv.in{opacity:1;transform:none}
 
   /* ---------- responsive guards ---------- */
   @media(max-width:900px){
@@ -293,7 +294,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation:none!important;transition:none!important}
-    .rv{opacity:1;transform:none}
+    .js .rv{opacity:1;transform:none}
     html{scroll-behavior:auto}
   }
 </style>
@@ -654,9 +655,16 @@
 
   /* popover */
   var pop=$('#pop'), popBtn=$('#popBtn');
-  popBtn.addEventListener('click',function(e){e.stopPropagation();var o=pop.classList.toggle('open');popBtn.setAttribute('aria-expanded',o)});
+  popBtn.addEventListener('click',function(e){e.stopPropagation();var o=pop.classList.toggle('open');popBtn.setAttribute('aria-expanded',String(o))});
   document.addEventListener('click',function(e){if(!pop.contains(e.target)){pop.classList.remove('open');popBtn.setAttribute('aria-expanded','false')}});
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'){pop.classList.remove('open');popBtn.setAttribute('aria-expanded','false')}});
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&pop.classList.contains('open')){
+      var hadFocus=pop.contains(document.activeElement);
+      pop.classList.remove('open');
+      popBtn.setAttribute('aria-expanded','false');
+      if(hadFocus) popBtn.focus();
+    }
+  });
 
   /* ================= ripple ================= */
   document.addEventListener('pointerdown',function(e){
@@ -744,12 +752,12 @@
   };
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function play(key){
-    var id=++run, lines=SCRIPTS[key]; out.innerHTML='';
+    var id=++run, lines=SCRIPTS[key]; out.innerHTML=''; out.setAttribute('aria-busy','true');
     var i=0;
     (function next(){
       if(id!==run) return;
       var cur=out.querySelector('.cursor'); if(cur)cur.remove();
-      if(i>=lines.length){out.insertAdjacentHTML('beforeend','<span class="cursor"></span>');return}
+      if(i>=lines.length){out.setAttribute('aria-busy','false');out.insertAdjacentHTML('beforeend','<span class="cursor"></span>');return}
       var ln=lines[i++], span=document.createElement('span');
       if(ln[0])span.className=ln[0];
       out.appendChild(span);
