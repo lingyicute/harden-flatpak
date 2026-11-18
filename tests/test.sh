@@ -27,6 +27,11 @@ info)
     [[ -n "${FAKE_NO_SYSTEM:-}" ]] || printf '[System Bus Policy]\norg.z.W=talk\n'
     printf '[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n'
   fi ;;
+override)
+    if [[ -n "${FAKE_SYSTEM_LAYER:-}" && "$3" == --show && "$2" == --system ]]; then
+      if [[ $# == 3 ]]; then printf '[Session Bus Policy]\norg.example.SiteSession=talk\n'
+      else printf '[System Bus Policy]\norg.example.SiteSystem=talk\n[Policy Tracker3]\ndbus:org.example.Miner=tracker:Audio;\n'; fi
+    fi ;;
 ps) [[ -n "${FAKE_STUCK_PS:-}" ]] && printf '4242\t99\n'
     [[ -n "${FAKE_PS_UNTIL:-}" && $(date +%s) -lt $FAKE_PS_UNTIL ]] && printf '4343\t99\n'
     if [[ -n "${FAKE_PS_STARTUP:-}" && ! -f "$FAKE_PS_STARTUP.dead" ]]; then
@@ -141,6 +146,15 @@ deny_app com.github.tchx84.Flatseal '--talk-name=org.gnome.Software'
 ! grep -q -- '--system-no-talk-name' "$LOG" || { echo "FAIL: system bus deny written for app without system policy"; fail=1; }
 want_global '--no-talk-name=org.x.Y'
 
+# Merged permissions can omit policies from lower override layers on the next run.
+: > "$LOG"; FAKE_SYSTEM_LAYER=1 FAKE_NO_SYSTEM=1 bash "$root/lockdown.sh" > /dev/null
+want 'override --system --show'
+want 'override --installation=extra --show org.b.App'
+want_global '--no-talk-name=org.example.SiteSession'
+want_global '--remove-policy=Tracker3.dbus:org.example.Miner=tracker:Audio'
+want_app org.a.App '--system-no-talk-name=org.example.SiteSystem'
+deny_app org.b.App '--system-no-talk-name=org.example.SiteSystem'
+
 # the per-app override listing skips global and Flatseal but shows other apps
 mkdir -p "$HOME/.local/share/flatpak/overrides"; touch "$HOME/.local/share/flatpak/overrides/"{global,com.github.tchx84.Flatseal,org.c.App}
 out=$(bash "$root/lockdown.sh")
@@ -173,7 +187,7 @@ want_global '--nofilesystem=host:reset'
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
 deny_app com.github.tchx84.Flatseal '--talk-name=org.freedesktop.impl.portal.PermissionStore'
-for query in list --show-metadata --show-permissions; do
+for query in list --show-metadata --show-permissions --show; do
     : > "$LOG"; ! FAKE_FAIL_ON="$query" bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed $query ignored"; fail=1; }
     ! grep -q '^override --user ' "$LOG" || { echo "FAIL: overrides changed after failed $query"; fail=1; }
 done

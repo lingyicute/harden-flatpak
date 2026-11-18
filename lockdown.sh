@@ -49,6 +49,12 @@ echo ""
         esac
         perms=$(flatpak info "${sel[@]}" --show-metadata "${ref}" < /dev/null)
         perms+=$'\n'$(flatpak info "${sel[@]}" --show-permissions "${ref}" < /dev/null)
+        # A previous user deny also hides grants that exist only in a system override.
+        # Read both lower layers before replacing the user policy on a re-run.
+        if [ "${inst}" != user ]; then
+            perms+=$'\n'$(flatpak override "${sel[@]}" --show < /dev/null)
+            perms+=$'\n'$(flatpak override "${sel[@]}" --show "${ref%%/*}" < /dev/null)
+        fi
         app_flags=$(awk '
             { sub(/\r$/, "") }
             /^[[:space:]]*(#|$)/ { next }
