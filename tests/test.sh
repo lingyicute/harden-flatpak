@@ -173,8 +173,10 @@ want_global '--nofilesystem=host:reset'
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
 deny_app com.github.tchx84.Flatseal '--talk-name=org.freedesktop.impl.portal.PermissionStore'
-: > "$LOG"; ! FAKE_FAIL_ON='org.b.App/x86_64/stable' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed info in subshell ignored"; fail=1; }
-! grep -q '^override' "$LOG" || { echo "FAIL: failed info: overrides were modified anyway"; fail=1; }
+for query in list --show-metadata --show-permissions; do
+    : > "$LOG"; ! FAKE_FAIL_ON="$query" bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed $query ignored"; fail=1; }
+    ! grep -q '^override --user ' "$LOG" || { echo "FAIL: overrides changed after failed $query"; fail=1; }
+done
 
 # cleanup must refuse to delete data if an instance is still running
 : > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }

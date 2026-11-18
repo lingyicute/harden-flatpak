@@ -47,11 +47,8 @@ echo ""
             "system ("*")") inst=${inst#"system ("}; sel=("--installation=${inst%")"}") ;;
             *) echo "error: unknown flatpak installation: ${inst}" >&2; exit 1 ;;
         esac
-        perms=$(
-            flatpak info "${sel[@]}" --show-metadata "${ref}" < /dev/null
-            echo
-            flatpak info "${sel[@]}" --show-permissions "${ref}" < /dev/null
-        )
+        perms=$(flatpak info "${sel[@]}" --show-metadata "${ref}" < /dev/null)
+        perms+=$'\n'$(flatpak info "${sel[@]}" --show-permissions "${ref}" < /dev/null)
         app_flags=$(awk '
             { sub(/\r$/, "") }
             /^[[:space:]]*(#|$)/ { next }
