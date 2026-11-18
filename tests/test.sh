@@ -30,6 +30,7 @@ info)
   else
     printf '[Session Bus Policy]\n# comment=ignored\norg.x.Y=talk\norg.kde.*=own\n'
     [[ -n "${FAKE_NO_SYSTEM:-}" ]] || printf '[System Bus Policy]\norg.z.W=talk\n'
+    [[ -z "${FAKE_ESCAPED_POLICY:-}" ]] || printf '%s\n' '[Policy Tracker3]' 'dbus:org.example.Miner=one\;two;'
     printf '[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n'
   fi ;;
 override)
@@ -215,6 +216,10 @@ for query in list --show-metadata --show-permissions --show; do
     : > "$LOG"; ! FAKE_FAIL_ON="$query" bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed $query ignored"; fail=1; }
     ! grep -q '^override --user ' "$LOG" || { echo "FAIL: overrides changed after failed $query"; fail=1; }
 done
+
+# Do not silently translate an escaped keyfile element into two different policies.
+: > "$LOG"; ! FAKE_ESCAPED_POLICY=1 bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo 'FAIL: unsupported escaped policy accepted'; fail=1; }
+! grep -q '^override --user ' "$LOG" || { echo 'FAIL: escaped policy changed overrides'; fail=1; }
 
 # cleanup must refuse to delete data if an instance is still running
 : > "$LOG"; ! FAKE_STUCK_PS=1 bash "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: stuck instance ignored"; fail=1; }

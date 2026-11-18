@@ -70,6 +70,11 @@ echo ""
                 if (val != "" && val != "none" && sec == "[Session Bus Policy]") print "--no-talk-name=" k
                 else if (val != "" && val != "none" && sec == "[System Bus Policy]") print "--system-no-talk-name=" k
                 else if (sec ~ /^\[Policy .+\]$/) {
+                    # Do not split an escaped GKeyFile list into different rules.
+                    if (index(val, "\\")) {
+                        print "error: escaped subsystem policy values are unsupported; nothing was changed." > "/dev/stderr"
+                        exit 1
+                    }
                     n = split(val, v, ";")
                     for (i = 1; i <= n; i++)
                         if (v[i] != "" && v[i] !~ /^!/) print "--remove-policy=" substr(sec, 9, length(sec) - 9) "." k "=" v[i]
