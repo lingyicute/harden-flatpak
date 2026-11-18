@@ -50,7 +50,7 @@ kill)
       if [[ ! -f "$FAKE_PS_STARTUP.k2" ]]; then : > "$FAKE_PS_STARTUP.k2"; exit 1; fi
       : > "$FAKE_PS_STARTUP.dead"
     fi ;;
-documents) [[ "${2:-}" == "--columns=id" ]] && echo doc1 ;;
+documents) [[ "${2:-}" == "--columns=id" ]] && printf '%s\n' "${FAKE_DOC_IDS-doc1}" ;;
 esac
 exit 0
 EOS
@@ -211,7 +211,7 @@ done
 
 # cleanup must wipe data including chmod 000 directories and per-app runtime tmp/xdg-run/dev-shm
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
-want 'document-unexport --doc-id doc1'
+want 'document-unexport --doc-id -- doc1'
 [ -z "$(ls -A "$HOME/.var/app")" ] || { echo "FAIL: ~/.var/app not empty"; fail=1; }
 [ -z "$(ls -A "$XDG_RUNTIME_DIR/app")" ] || { echo "FAIL: runtime app dir not empty"; fail=1; }
 [ ! -e "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp" ] || { echo "FAIL: .flatpak tmp not wiped"; fail=1; }
@@ -220,6 +220,19 @@ want 'document-unexport --doc-id doc1'
 [ ! -e "$tmp/shm/flatpak-org.a.App-AbCdEf" ] || { echo "FAIL: per-app dev-shm not wiped"; fail=1; }
 [ -f "$tmp/shm/other-dir/keep" ] && [ -f "$tmp/shm-target/keep" ] || { echo "FAIL: cleanup touched something outside flatpak-* dirs"; fail=1; }
 [ -f "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" ] || { echo "FAIL: .flatpak .ref lockfile removed"; fail=1; }
+
+# No documents is success; a portal error is partial cleanup, not success.
+: > "$LOG"; FAKE_DOC_IDS='' sh "$root/cleanup.sh" > /dev/null < /dev/null
+! grep -q '^document-unexport' "$LOG" || { echo 'FAIL: empty document ID unexported'; fail=1; }
+for failure in 'documents --columns=id' doc1; do
+    touch "$HOME/.var/app/local-data"; : > "$LOG"
+    if out=$(FAKE_FAIL_ON="$failure" FAKE_DOC_IDS=$'doc1\ndoc2' sh "$root/cleanup.sh" 2>&1 < /dev/null); then
+        echo 'FAIL: document portal error reported success'; fail=1
+    fi
+    [[ "$out" == *'本地数据已清理，但'* && "$out" != *'清理完成！'* ]] || { echo 'FAIL: inaccurate completion message'; fail=1; }
+    [ ! -e "$HOME/.var/app/local-data" ] || { echo 'FAIL: portal failure skipped local cleanup'; fail=1; }
+    if [ "$failure" = doc1 ]; then want 'document-unexport --doc-id -- doc2'; fi
+done
 
 # flatpak ps lists an already dead instance for up to 4s after its start: cleanup must wait it out without re-killing
 : > "$LOG"; FAKE_PS_UNTIL=$(( $(date +%s) + 4 )) sh "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo "FAIL: cleanup gave up on a dead instance still listed by flatpak ps"; fail=1; }

@@ -13,7 +13,7 @@ Both scripts are deliberately tiny so that they can be audited at a glance.
 
 > [!important]
 >
-> Scripts never ask for confirmation: running the script is the confirmation. `cleanup.sh` deletes data immediately.
+> Scripts never ask for confirmation: running the script is the confirmation. `cleanup.sh` deletes data immediately. If document listing or unexport fails, local cleanup still runs, but the script reports partial completion and exits nonzero.
 
 ## What `lockdown.sh` does
 

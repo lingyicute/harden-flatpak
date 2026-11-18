@@ -1,6 +1,5 @@
 #!/bin/sh
 set -eu
-(set -o pipefail) 2>/dev/null && set -o pipefail
 
 app_data_dir="${HOME:?}/.var/app"
 
@@ -61,9 +60,18 @@ EOF
     exit 1
 }
 
-# 加上 || true 防止 grep 没找到内容导致脚本中断
 stop_instances
-LC_ALL=C flatpak documents --columns=id | grep -v ' ' | xargs -rn1 flatpak document-unexport --doc-id || true
+documents_ok=true
+if ids=$(LC_ALL=C flatpak documents --columns=id); then
+    while IFS= read -r id; do
+        [ -n "$id" ] || continue
+        flatpak document-unexport --doc-id -- "$id" < /dev/null || documents_ok=false
+    done <<EOF
+$ids
+EOF
+else
+    documents_ok=false
+fi
 stop_instances
 
 # -H：~/.var/app 本身是符号链接时也照常清理链接指向的目录
@@ -91,7 +99,11 @@ for shm in "${CLEANUP_SHM_DIR:-/dev/shm}"/flatpak-*; do
     rm -rf -- "$shm"
 done
 
-echo "清理完成！"
+if [ "$documents_ok" = true ]; then
+    echo "清理完成！"
+else
+    echo "本地数据已清理，但未能确认所有文档已取消导出。" >&2
+fi
 echo ""
 
 
@@ -116,3 +128,4 @@ if [ -t 0 ]; then
     printf "按回车键(Enter)退出..."
     read -r _ || true
 fi
+[ "$documents_ok" = true ]
