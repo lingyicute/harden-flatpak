@@ -678,17 +678,20 @@
   });
 
   /* ================= app bar + scrollspy ================= */
-  var bar=$('#bar');
-  function onScroll(){bar.classList.toggle('scrolled',window.scrollY>8)}
-  window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
-  var links=$$('nav.links a');
+  var bar=$('#bar'), links=$$('nav.links a');
+  var sections=links.map(function(a){return $(a.getAttribute('href'))});
+  function onScroll(){
+    bar.classList.toggle('scrolled',window.scrollY>8);
+    var y=window.innerHeight*.4;
+    links.forEach(function(a,i){
+      var box=sections[i].getBoundingClientRect(), active=box.top<=y&&box.bottom>y;
+      a.classList.toggle('active',active);
+      if(active)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');
+    });
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll); onScroll();
   if('IntersectionObserver' in window){
-    var spy=new IntersectionObserver(function(es){
-      es.forEach(function(en){
-        if(en.isIntersecting){links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id)})}
-      });
-    },{rootMargin:'-40% 0px -55% 0px'});
-    ['features','demo','start','limits'].forEach(function(id){var el=document.getElementById(id);if(el)spy.observe(el)});
     var rv=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');rv.unobserve(en.target)}})},{threshold:.12});
     $$('.rv').forEach(function(el){rv.observe(el)});
   }
