@@ -40,7 +40,11 @@ echo ""
     # already set to none, so a later override reset would bring those names back.
     installed_apps=$(flatpak list --app --columns=installation,ref | sort -u)
     while IFS=$'\t' read -r inst ref; do
-        [ -n "${ref}" ] || continue
+        [ -n "${inst}${ref}" ] || continue
+        if [[ ! ${ref} =~ ^[^/[:space:]]+/[^/[:space:]]+/[^/[:space:]]+$ ]]; then
+            echo "error: incomplete Flatpak ref in installation list; nothing was changed." >&2
+            exit 1
+        fi
         case "${inst}" in
             user) sel=(--user) ;;
             system) sel=(--system) ;;

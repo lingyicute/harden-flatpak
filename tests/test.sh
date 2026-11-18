@@ -21,7 +21,9 @@ echo "$*" >> "$LOG"
 [[ -n "${FAKE_FAIL_ON:-}" && " $* " == *" $FAKE_FAIL_ON "* ]] && exit 1
 case "$1" in
 --version) echo "Flatpak ${FAKE_FLATPAK_VERSION:-1.17.0}" ;;
-list) printf 'user\torg.a.App/x86_64/stable\nsystem\torg.a.App/x86_64/stable\nsystem (extra)\torg.b.App/x86_64/stable\n'
+list) [[ -z "${FAKE_EMPTY_LIST:-}" ]] || exit 0
+      [[ -z "${FAKE_BAD_ROW:-}" ]] || { printf 'user\n'; exit 0; }
+      printf 'user\torg.a.App/x86_64/stable\nsystem\torg.a.App/x86_64/stable\nsystem (extra)\torg.b.App/x86_64/stable\n'
       [[ -z "${FAKE_LIST_FLATSEAL:-}" ]] || printf 'user\tcom.github.tchx84.Flatseal/x86_64/stable\n' ;;
 info)
   if [[ "$*" == *--show-metadata* ]]; then printf '[Application]\r\nname=org.a.App\r\n[Session Bus Policy] \r\norg.m.Meta=talk\r\norg.c.Crlf = talk\r\norg.n.None = none\r\n'
@@ -183,6 +185,12 @@ rm -f "$HOME/.local/share/flatpak/overrides/org.a.App"
 : > "$LOG"; FAKE_FLATPAK_VERSION=1.16.0 bash "$root/lockdown.sh" > /dev/null
 deny_global '--nofilesystem=host-root'
 want_global '--nofilesystem=host:reset'
+
+# Empty inventory is valid, an incomplete nonempty inventory is not.
+: > "$LOG"; FAKE_EMPTY_LIST=1 bash "$root/lockdown.sh" > /dev/null
+want_global '--nofilesystem=host:reset'
+: > "$LOG"; ! FAKE_BAD_ROW=1 bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo 'FAIL: incomplete inventory accepted'; fail=1; }
+! grep -q '^override --user ' "$LOG" || { echo 'FAIL: malformed inventory changed overrides'; fail=1; }
 
 # flatpak too old or malformed version: abort and change nothing
 : > "$LOG"; ! FAKE_FLATPAK_VERSION=1.14.0 bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: old flatpak accepted"; fail=1; }
