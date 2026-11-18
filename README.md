@@ -6,7 +6,7 @@ Two scripts to harden Flatpak.
 
 ```console
 $ bash lockdown.sh   # default-deny user-level overrides; re-run after installing apps
-$ bash cleanup.sh    # kill Flatpaks, unexport documents, wipe ~/.var/app/*, $XDG_RUNTIME_DIR/app/*, $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run,dev-shm} and /dev/shm/flatpak-*
+$ bash cleanup.sh    # kill Flatpaks, unexport documents, wipe ~/.var/app/*, $XDG_RUNTIME_DIR/app/*, $XDG_RUNTIME_DIR/.flatpak/*/{tmp,xdg-run,dev-shm} and user-owned /dev/shm/flatpak-APP_ID-XXXXXX directories
 ```
 
 Both scripts are deliberately tiny so that they can be audited at a glance.

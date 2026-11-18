@@ -93,7 +93,8 @@ fi
 
 # 以 per-app-dev-shm 运行过的应用，其 /dev/shm 是宿主机上的 /dev/shm/flatpak-$APP_ID-XXXXXX（内存中，应用可写）。
 # 只处理属于当前用户的真实目录，不跟随符号链接。CLEANUP_SHM_DIR 仅供测试覆盖。
-for shm in "${CLEANUP_SHM_DIR:-/dev/shm}"/flatpak-*; do
+for shm in "${CLEANUP_SHM_DIR:-/dev/shm}"/flatpak-*.*.*-??????; do
+    case "${shm##*-}" in *[!a-zA-Z0-9]*) continue ;; esac
     [ -d "$shm" ] && [ ! -L "$shm" ] && [ -O "$shm" ] || continue
     find -P "$shm" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
     rm -rf -- "$shm"
