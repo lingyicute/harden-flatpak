@@ -229,6 +229,7 @@ echo ""
 
     echo "-- Per-app Overrides (these still win over everything above; inspect: flatpak override --user --show APP_ID) --"
     echo "Note: apps that got the system bus denies above are listed too."
-    ls -A "${overrides_dir}" 2>/dev/null | grep -vxF -e global -e com.github.tchx84.Flatseal || echo "	none"
+    remaining=$(find -H "${overrides_dir}" -mindepth 1 -maxdepth 1 ! -name global ! -name com.github.tchx84.Flatseal -printf '%f\n' | sort)
+    printf '%s\n' "${remaining:-none}"
 
     echo "Lockdown complete!"
