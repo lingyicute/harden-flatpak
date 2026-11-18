@@ -87,8 +87,20 @@ if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/app" ] && [ ! -L "$XD
     find -P "$XDG_RUNTIME_DIR/app" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 fi
 if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/.flatpak" ] && [ ! -L "$XDG_RUNTIME_DIR/.flatpak" ]; then
-    find -P "$XDG_RUNTIME_DIR/.flatpak" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
-    find -P "$XDG_RUNTIME_DIR/.flatpak" -mindepth 2 -maxdepth 2 \( -name tmp -o -name xdg-run -o -name dev-shm \) -exec rm -rf -- {} +
+    # Only traverse the slots that will be removed, not unrelated instance metadata.
+    find -P "$XDG_RUNTIME_DIR/.flatpak" -maxdepth 1 -type d ! -perm -u=rx -exec chmod u+rx -- {} \;
+    for app in "$XDG_RUNTIME_DIR/.flatpak"/*; do
+        [ -d "$app" ] && [ ! -L "$app" ] || continue
+        for slot in tmp xdg-run dev-shm; do
+            path="$app/$slot"
+            [ -e "$path" ] || [ -L "$path" ] || continue
+            [ -w "$app" ] || chmod u+w -- "$app"
+            if [ -d "$path" ] && [ ! -L "$path" ]; then
+                find -P "$path" -type d ! -perm -u=rwx -exec chmod u+rwx -- {} \;
+            fi
+            rm -rf -- "$path"
+        done
+    done
 fi
 
 # 以 per-app-dev-shm 运行过的应用，其 /dev/shm 是宿主机上的 /dev/shm/flatpak-$APP_ID-XXXXXX（内存中，应用可写）。

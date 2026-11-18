@@ -11,6 +11,8 @@ touch "$HOME/.var/app/org.a.App/data/x" "$HOME/.var/app/org.a.App/data/locked/z"
 mkdir -p "$tmp/shm/flatpak-org.a.App-AbCdEf/locked" "$tmp/shm/other-dir" "$tmp/shm-target"; touch "$tmp/shm/flatpak-org.a.App-AbCdEf/v" "$tmp/shm/flatpak-org.a.App-AbCdEf/locked/u" "$tmp/shm/other-dir/keep" "$tmp/shm-target/keep"; ln -s "$tmp/shm-target" "$tmp/shm/flatpak-link"
 mkdir -p "$tmp/shm/flatpak-backups" "$tmp/shm/flatpak-org.a.App-archive"
 ln -s "$tmp/shm/flatpak-org.a.App-AbCdEf" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/dev-shm"
+mkdir -p "$XDG_RUNTIME_DIR/.flatpak/org.a.App/metadata"
+chmod 0500 "$XDG_RUNTIME_DIR/.flatpak/org.a.App/metadata"
 chmod 000 "$tmp/shm/flatpak-org.a.App-AbCdEf/locked" "$HOME/.var/app/org.a.App/data/locked" "$XDG_RUNTIME_DIR/app/org.a.App/locked" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp/locked"
 
 cat > "$tmp/bin/flatpak" <<'EOS'
@@ -221,6 +223,7 @@ want 'document-unexport --doc-id -- doc1'
 [ ! -e "$tmp/shm/flatpak-org.a.App-AbCdEf" ] || { echo "FAIL: per-app dev-shm not wiped"; fail=1; }
 [ -d "$tmp/shm/flatpak-backups" ] && [ -d "$tmp/shm/flatpak-org.a.App-archive" ] || { echo 'FAIL: non-Flatpak shared memory name removed'; fail=1; }
 [ -f "$tmp/shm/other-dir/keep" ] && [ -f "$tmp/shm-target/keep" ] || { echo "FAIL: cleanup touched something outside flatpak-* dirs"; fail=1; }
+[ "$(stat -c %a "$XDG_RUNTIME_DIR/.flatpak/org.a.App/metadata")" = 500 ] || { echo 'FAIL: unrelated metadata permissions changed'; fail=1; }
 [ -f "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" ] || { echo "FAIL: .flatpak .ref lockfile removed"; fail=1; }
 
 # No documents is success; a portal error is partial cleanup, not success.
