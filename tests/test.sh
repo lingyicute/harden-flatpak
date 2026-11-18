@@ -259,5 +259,13 @@ rm -rf "$XDG_RUNTIME_DIR/.flatpak"; ln -s "$tmp/outside2" "$XDG_RUNTIME_DIR/.fla
 : > "$LOG"; bash "$root/cleanup.sh" > /dev/null < /dev/null
 [ -f "$tmp/outside2/org.a.App/tmp/keep" ] || { echo "FAIL: followed symlinked XDG_RUNTIME_DIR/.flatpak"; fail=1; }
 
+# A relocated data directory is supported, but a misconfigured root is rejected before cleanup.
+rmdir "$HOME/.var/app"; mkdir "$tmp/relocated-data"; touch "$tmp/relocated-data/local-data"
+ln -s "$tmp/relocated-data" "$HOME/.var/app"; sh "$root/cleanup.sh" > /dev/null < /dev/null
+[ ! -e "$tmp/relocated-data/local-data" ] || { echo 'FAIL: relocated app data not cleaned'; fail=1; }
+rm "$HOME/.var/app"; ln -s "$HOME" "$HOME/.var/app"; : > "$LOG"
+! sh "$root/cleanup.sh" > /dev/null 2>&1 < /dev/null || { echo 'FAIL: unsafe app data root accepted'; fail=1; }
+[ ! -s "$LOG" ] || { echo 'FAIL: cleanup started before checking its data root'; fail=1; }
+
 [ $fail = 0 ] && echo "all tests passed"
 exit $fail

@@ -2,6 +2,14 @@
 set -eu
 
 app_data_dir="${HOME:?}/.var/app"
+# Support relocated app data, but never treat the home directory or an ancestor as its contents.
+if [ -d "$app_data_dir" ]; then
+    data_root=$(realpath -e -- "$app_data_dir")
+    home_root=$(realpath -e -- "$HOME")
+    case "$home_root/" in
+        "${data_root%/}/"*) echo "错误：应用数据目录指向 HOME 或其上级目录，已停止。" >&2; exit 1 ;;
+    esac
+fi
 
 # ==========================================
 # 1. 运行前状态展示
