@@ -3,6 +3,8 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+# Never inspect or write overrides in an installation inherited from the caller.
+unset FLATPAK_USER_DIR XDG_DATA_HOME
 export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/run" LOG="$tmp/calls.log" CLEANUP_SHM_DIR="$tmp/shm"
 mkdir -p "$HOME/.var/app/org.a.App/data/locked" "$XDG_RUNTIME_DIR/app/org.a.App/locked" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp/locked" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/xdg-run" "$tmp/bin"
 touch "$HOME/.var/app/org.a.App/data/x" "$HOME/.var/app/org.a.App/data/locked/z" "$XDG_RUNTIME_DIR/app/org.a.App/y" "$XDG_RUNTIME_DIR/app/org.a.App/locked/w" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/.ref" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/tmp/locked/t" "$XDG_RUNTIME_DIR/.flatpak/org.a.App/xdg-run/s"
@@ -141,13 +143,13 @@ want_global '--no-talk-name=org.x.Y'
 
 # the per-app override listing skips global and Flatseal but shows other apps
 mkdir -p "$HOME/.local/share/flatpak/overrides"; touch "$HOME/.local/share/flatpak/overrides/"{global,com.github.tchx84.Flatseal,org.c.App}
-out=$(env -u FLATPAK_USER_DIR -u XDG_DATA_HOME bash "$root/lockdown.sh")
+out=$(bash "$root/lockdown.sh")
 grep -qxF org.c.App <<< "$out" || { echo "FAIL: per-app override not listed"; fail=1; }
 ! grep -qxF -e global -e com.github.tchx84.Flatseal <<< "$out" || { echo "FAIL: global/Flatseal override listed"; fail=1; }
 
 # user-granted system bus names in per-app overrides survive re-runs; Flatseal denies come after --reset
 printf '[System Bus Policy]\r\norg.bluez = talk\r\norg.freedesktop.PackageKit=none\n' > "$HOME/.local/share/flatpak/overrides/org.a.App"
-: > "$LOG"; env -u FLATPAK_USER_DIR -u XDG_DATA_HOME FAKE_LIST_FLATSEAL=1 bash "$root/lockdown.sh" > /dev/null
+: > "$LOG"; FAKE_LIST_FLATSEAL=1 bash "$root/lockdown.sh" > /dev/null
 deny_app org.a.App '--system-no-talk-name=org.bluez'
 want_app org.a.App '--system-no-talk-name=org.freedesktop.PackageKit'
 want_app org.a.App '--system-no-talk-name=org.z.W'
