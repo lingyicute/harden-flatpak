@@ -364,7 +364,7 @@
           <span class="chip filled"><svg class="i"><use href="#i-ok"/></svg>开源 · GPLv3</span>
           <span class="chip"><svg class="i"><use href="#i-search"/></svg>可一眼审计</span>
         </div>
-        <h1>让每个 Flatpak<br>都<em>默认零权限</em></h1>
+        <h1>让 Flatpak 权限<br>从<em>默认拒绝</em>开始</h1>
         <p class="lead">两个极简脚本。<code>lockdown.sh</code> 将 Flatpak 配置为默认拒绝几乎所有权限，<code>cleanup.sh</code> 一键清除应用残留数据。需要什么权限，再由你明确授予。</p>
         <div class="cta">
           <a class="btn btn-filled" href="#start"><svg class="i"><use href="#i-code"/></svg>快速开始</a>
@@ -400,13 +400,13 @@
       <div class="rv">
         <div class="eyebrow"><svg class="i" style="width:18px;height:18px"><use href="#i-shield"/></svg>特性</div>
         <h2 class="title">收紧沙箱，<br>而不是相信默认值</h2>
-        <p class="lead">Flatpak 的默认配置面向便利。harden-flatpak 反其道而行：先全部拒绝，再按需放行。</p>
+        <p class="lead">Flatpak 的默认配置面向便利。harden-flatpak 反其道而行：先拒绝，再按需放行。</p>
       </div>
       <div class="bento">
         <article class="card c-a t-primary rv">
           <div class="ico"><svg class="i"><use href="#i-block"/></svg></div>
           <h3>默认拒绝所有权限类型</h3>
-          <p>覆盖每一种权限类别，包括 <code>wayland</code> 与 <code>dri</code>，对所有应用生效；绝不授予 <code>--persist</code>。</p>
+          <p>覆盖每一种权限类别，包括 <code>wayland</code> 与 <code>dri</code>，且不新增 <code>--persist</code>，但不会取消清单中已有的持久化声明。</p>
           <ul><li>--unshare</li><li>--nosocket</li><li>--nodevice</li><li>--disallow</li><li>--nousb=all</li><li>--remove-policy</li></ul>
         </article>
         <article class="card c-b t-tertiary rv">
@@ -721,7 +721,7 @@
     lock:[
       ['p','$ bash lockdown.sh'],
       ['dm','# 示意输出，非脚本原始日志'],
-      ['','→ 拒绝全部权限类型 (unshare / nosocket / nodevice / disallow / nousb)'],
+      ['','→ 拒绝所列权限类型 (unshare / nosocket / nodevice / disallow / nousb)'],
       ['','→ 拒绝文件系统：host:reset home host host-os host-etc host-root'],
       ['','→ 屏蔽已存在的凭据与逃逸目录：~/.ssh ~/.gnupg ~/.password-store …'],
       ['','→ 拒绝静态会话 D-Bus 名单与 portal 后端；系统总线名称按应用逐个拒绝'],
