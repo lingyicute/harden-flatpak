@@ -149,9 +149,17 @@ echo ""
         global_args+=("${flag}")
     done <<< "${installed_flags}"
 
-    echo "-- Resetting And Writing Global Overrides --"
-    "${kCommand[@]}" --reset < /dev/null
-    "${kCommand[@]}" "${global_args[@]}" < /dev/null
+    # Build from an empty installation, but keep the old file until serialization succeeds.
+    replace_override() (
+        name=$1; shift
+        mkdir -p -- "${overrides_dir}"
+        stage=$(mktemp -d -- "${overrides_dir}/.lockdown.XXXXXXXX")
+        trap 'rm -rf -- "$stage"' EXIT
+        FLATPAK_USER_DIR="${stage}" "${kCommand[@]}" "$@" < /dev/null
+        mv -fT -- "${stage}/overrides/${name}" "${overrides_dir}/${name}"
+    )
+    echo "-- Replacing Global Overrides --"
+    replace_override global "${global_args[@]}"
 
     flatseal_system_args=()
     if [ "${#app_system_flags[@]}" -gt 0 ]; then
@@ -192,8 +200,6 @@ echo ""
     fi
 
     echo "-- Granting Flatseal Access --"
-    echo "	Resetting Flatseal overrides..."
-    "${kCommand[@]}" --reset com.github.tchx84.Flatseal < /dev/null
     flatseal_args=("${flatseal_system_args[@]}")
     if [ "${#flatseal_system_args[@]}" -gt 0 ]; then
         echo "	Rejecting system bus names for com.github.tchx84.Flatseal..."
@@ -210,7 +216,7 @@ echo ""
         echo "	Granting ${i}..."
         flatseal_args+=("--talk-name=${i}")
     done
-    "${kCommand[@]}" "${flatseal_args[@]}" com.github.tchx84.Flatseal < /dev/null
+    replace_override com.github.tchx84.Flatseal "${flatseal_args[@]}" com.github.tchx84.Flatseal
 
     echo "-- Per-app Overrides (these still win over everything above; inspect: flatpak override --user --show APP_ID) --"
     echo "Note: apps that got the system bus denies above are listed too."

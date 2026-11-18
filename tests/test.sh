@@ -28,6 +28,12 @@ info)
     printf '[Policy Tracker3]\ndbus:org.t.M=a:b;c:d;!e:f;k=v;\n'
   fi ;;
 override)
+    # Stand in for Flatpak's keyfile writer in the temporary installation.
+    if [[ "$2" == --user && -n "${FLATPAK_USER_DIR:-}" && "$3" != --show ]]; then
+      name=${!#}; [[ "$name" != --* ]] || name=global
+      mkdir -p "$FLATPAK_USER_DIR/overrides" || exit 1
+      printf '%s\n' "$@" > "$FLATPAK_USER_DIR/overrides/$name" || exit 1
+    fi
     if [[ -n "${FAKE_SYSTEM_LAYER:-}" && "$3" == --show && "$2" == --system ]]; then
       if [[ $# == 3 ]]; then printf '[Session Bus Policy]\norg.example.SiteSession=talk\n'
       else printf '[System Bus Policy]\norg.example.SiteSystem=talk\n[Policy Tracker3]\ndbus:org.example.Miner=tracker:Audio;\n'; fi
@@ -61,7 +67,7 @@ want_app() { has_app "$1" "$2" || { echo "FAIL: missing for $1: $2"; fail=1; }; 
 deny_app() { ! has_app "$1" "$2" || { echo "FAIL: unexpected for $1: $2"; fail=1; }; }
 
 : > "$LOG"; bash "$root/lockdown.sh" > /dev/null
-want 'override --user --reset'
+deny 'override --user --reset'
 want 'list --app --columns=installation,ref'
 want 'info --user --show-metadata org.a.App/x86_64/stable'
 want 'info --user --show-permissions org.a.App/x86_64/stable'
@@ -69,7 +75,7 @@ want 'info --system --show-metadata org.a.App/x86_64/stable'
 want 'info --system --show-permissions org.a.App/x86_64/stable'
 want 'info --installation=extra --show-metadata org.b.App/x86_64/stable'
 want 'info --installation=extra --show-permissions org.b.App/x86_64/stable'
-# global overrides are batched into a single call after --reset, with host:reset before path masks
+# global overrides are batched into a single replacement, with host:reset before path masks
 [ "$(awk '/^override --user --/ && $0 != "override --user --reset" && $NF ~ /^--/{c++} END{print c+0}' "$LOG")" -eq 1 ] || { echo "FAIL: global overrides not batched into one call"; fail=1; }
 awk '/^override --user --/ && $0 != "override --user --reset" && $NF ~ /^--/ { a=index(" "$0" "," --nofilesystem=host:reset "); b=index(" "$0" "," --nofilesystem=~/.ssh "); if (a>0 && b>a) ok=1 } END{exit !ok}' "$LOG" || { echo "FAIL: host:reset must precede path masks"; fail=1; }
 want_global '--no-talk-name=org.m.Meta'
@@ -130,7 +136,7 @@ want_global '--remove-policy=Tracker3.dbus:org.t.M=a:b'
 want_global '--remove-policy=Tracker3.dbus:org.t.M=c:d'
 want_global '--remove-policy=Tracker3.dbus:org.t.M=k=v'
 deny_global '--remove-policy=Tracker3.dbus:org.t.M=!e:f'
-want 'override --user --reset com.github.tchx84.Flatseal'
+deny 'override --user --reset com.github.tchx84.Flatseal'
 [ "$(awk '/^override --user / && $NF == "com.github.tchx84.Flatseal" && $3 != "--reset"{c++} END{print c+0}' "$LOG")" -eq 1 ] || { echo "FAIL: Flatseal grants not batched into one call"; fail=1; }
 want_app com.github.tchx84.Flatseal '--socket=wayland'
 want_app com.github.tchx84.Flatseal '--filesystem=/var/lib/flatpak/app:ro'
@@ -161,13 +167,13 @@ out=$(bash "$root/lockdown.sh")
 grep -qxF org.c.App <<< "$out" || { echo "FAIL: per-app override not listed"; fail=1; }
 ! grep -qxF -e global -e com.github.tchx84.Flatseal <<< "$out" || { echo "FAIL: global/Flatseal override listed"; fail=1; }
 
-# user-granted system bus names in per-app overrides survive re-runs; Flatseal denies come after --reset
+# user-granted system bus names in per-app overrides survive re-runs; Flatseal denies are written with its grants
 printf '[System Bus Policy]\r\norg.bluez = talk\r\norg.freedesktop.PackageKit=none\n' > "$HOME/.local/share/flatpak/overrides/org.a.App"
 : > "$LOG"; FAKE_LIST_FLATSEAL=1 bash "$root/lockdown.sh" > /dev/null
 deny_app org.a.App '--system-no-talk-name=org.bluez'
 want_app org.a.App '--system-no-talk-name=org.freedesktop.PackageKit'
 want_app org.a.App '--system-no-talk-name=org.z.W'
-awk '/^override --user --reset com\.github\.tchx84\.Flatseal$/{r=1;next} r&&/^override --user .* com\.github\.tchx84\.Flatseal$/&&/--system-no-talk-name=org\.z\.W/{ok=1} END{exit !ok}' "$LOG" || { echo "FAIL: Flatseal system bus deny missing or wiped by --reset"; fail=1; }
+want_app com.github.tchx84.Flatseal '--system-no-talk-name=org.z.W'
 rm -f "$HOME/.local/share/flatpak/overrides/org.a.App"
 
 # flatpak 1.16 rejects host-root: must not be sent
@@ -184,9 +190,16 @@ want_global '--nofilesystem=host:reset'
 ! grep -q '^override' "$LOG" || { echo "FAIL: trailing-alpha flatpak version: override was called"; fail=1; }
 
 # a failing deny must abort before any grant; a failing info must abort before touching any override at all
+overrides="$HOME/.local/share/flatpak/overrides"
+printf 'original global\n' > "$overrides/global"
+printf 'original Flatseal\n' > "$overrides/com.github.tchx84.Flatseal"
 : > "$LOG"; ! FAKE_FAIL_ON='--nodevice=dri' bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed deny ignored"; fail=1; }
 deny 'override --user --reset com.github.tchx84.Flatseal'
 deny_app com.github.tchx84.Flatseal '--talk-name=org.freedesktop.impl.portal.PermissionStore'
+grep -qxF 'original global' "$overrides/global" || { echo 'FAIL: failed write lost global overrides'; fail=1; }
+: > "$LOG"; ! FAKE_FAIL_ON=--socket=wayland bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo 'FAIL: failed Flatseal write ignored'; fail=1; }
+grep -qxF 'original Flatseal' "$overrides/com.github.tchx84.Flatseal" || { echo 'FAIL: failed write lost Flatseal overrides'; fail=1; }
+[ -z "$(find "$overrides" -name '.lockdown.*' -print -quit)" ] || { echo 'FAIL: staging directory left behind'; fail=1; }
 for query in list --show-metadata --show-permissions --show; do
     : > "$LOG"; ! FAKE_FAIL_ON="$query" bash "$root/lockdown.sh" > /dev/null 2>&1 || { echo "FAIL: failed $query ignored"; fail=1; }
     ! grep -q '^override --user ' "$LOG" || { echo "FAIL: overrides changed after failed $query"; fail=1; }
